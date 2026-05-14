@@ -41,13 +41,13 @@ export async function setOverlayWindow(enabled: boolean): Promise<void> {
       await w.setFullscreen(true)
       await w.setIgnoreCursorEvents(true)
     } else {
-      await w.setDecorations(true)
-      await w.setAlwaysOnTop(false)
-      await w.setFullscreen(false)
       await w.setIgnoreCursorEvents(false)
+      await w.setFullscreen(false)
+      await w.setAlwaysOnTop(false)
+      await w.setDecorations(true)
     }
   } catch (e) {
-    console.warn('Overlay window operation failed:', e)
+    console.error('setOverlayWindow failed:', e)
   }
 }
 

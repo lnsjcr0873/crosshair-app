@@ -48,7 +48,10 @@ export default function App() {
   const overlayMode = useCrosshairStore((s) => s.overlayMode)
 
   // window management
-  useEffect(() => { setOverlayWindow(overlayMode) }, [overlayMode])
+  useEffect(() => {
+    const timer = setTimeout(() => { setOverlayWindow(overlayMode) }, 300)
+    return () => clearTimeout(timer)
+  }, [overlayMode])
 
   // global shortcuts for overlay mode (works even when game has focus)
   useEffect(() => {
