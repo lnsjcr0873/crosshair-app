@@ -32,18 +32,22 @@ export async function writeBinaryFile(path: string, content: Uint8Array): Promis
 
 export async function setOverlayWindow(enabled: boolean): Promise<void> {
   if (!isTauri()) return
-  const { getCurrentWindow } = await import('@tauri-apps/api/window')
-  const w = getCurrentWindow()
-  if (enabled) {
-    await w.setDecorations(false)
-    await w.setAlwaysOnTop(true)
-    await w.setFullscreen(true)
-    await w.setIgnoreCursorEvents(true)
-  } else {
-    await w.setIgnoreCursorEvents(false)
-    await w.setFullscreen(false)
-    await w.setAlwaysOnTop(false)
-    await w.setDecorations(true)
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const w = getCurrentWindow()
+    if (enabled) {
+      await w.setDecorations(false)
+      await w.setAlwaysOnTop(true)
+      await w.setFullscreen(true)
+      await w.setIgnoreCursorEvents(true)
+    } else {
+      await w.setDecorations(true)
+      await w.setAlwaysOnTop(false)
+      await w.setFullscreen(false)
+      await w.setIgnoreCursorEvents(false)
+    }
+  } catch (e) {
+    console.warn('Overlay window operation failed:', e)
   }
 }
 
