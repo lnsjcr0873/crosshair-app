@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import TitleBar from './components/TitleBar'
 import Toolbar from './components/Toolbar'
 import CanvasPreview from './components/CanvasPreview'
 import TickList from './components/TickList'
@@ -121,6 +122,7 @@ export default function App() {
         <CanvasPreview />
       ) : (
         <>
+          <TitleBar />
           <Toolbar />
           <div className="flex flex-1 overflow-hidden">
             <div className="w-56 bg-zinc-800 border-r border-zinc-700 overflow-y-auto flex flex-col">
