@@ -28,16 +28,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Show Rust version
-        run: rustc --version && cargo --version
+        with:
+          targets: x86_64-pc-windows-msvc
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: v__VERSION__
-          releaseName: "准星刻度绘制 v__VERSION__"
-          releaseDraft: true
-          prerelease: false
+        run: cargo build --manifest-path src-tauri/Cargo.toml --release 2>&1
