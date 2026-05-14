@@ -29,14 +29,15 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Build Tauri app
-        run: npm run tauri build 2>&1
+      - name: Show Rust version
+        run: rustc --version && cargo --version
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: crosshair-app-windows
-          path: |
-            src-tauri/target/release/*.exe
-            src-tauri/target/release/**/*.msi
-          if-no-files-found: warn
+          tagName: v__VERSION__
+          releaseName: "准星刻度绘制 v__VERSION__"
+          releaseDraft: true
+          prerelease: false
