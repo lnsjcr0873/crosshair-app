@@ -28,8 +28,6 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-pc-windows-msvc
 
       - name: Build Tauri app
-        run: cargo build --manifest-path src-tauri/Cargo.toml --release 2>&1
+        run: npm run tauri build -- 2>&1
