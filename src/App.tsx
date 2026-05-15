@@ -8,6 +8,17 @@ import { useCrosshairStore } from './store/crosshairStore'
 import { exportPng, savePreset } from './engine/actions'
 import { isTauri, setOverlayWindow, registerShortcut, unregisterShortcut } from './engine/tauri'
 
+function visibleTicks(st: any) {
+  return st.config.ticks.filter((t: any) => {
+    if (!t.visible) return false
+    if (t.axis === 'vertical' && t.distance < 0 && !st.config.showTopTicks) return false
+    if (t.axis === 'vertical' && t.distance >= 0 && !st.config.showBottomTicks) return false
+    if (t.axis === 'horizontal' && t.distance < 0 && !st.config.showLeftTicks) return false
+    if (t.axis === 'horizontal' && t.distance > 0 && !st.config.showRightTicks) return false
+    return true
+  })
+}
+
 // Build a map: shortcut-string → handler
 function buildActionMap(): Map<string, (st: ReturnType<typeof useCrosshairStore.getState>) => void> {
   const m = new Map()
@@ -16,13 +27,13 @@ function buildActionMap(): Map<string, (st: ReturnType<typeof useCrosshairStore.
   m.set(cfg('toggleOverlay'), (st: any) => st.setOverlayMode(!st.overlayMode))
   m.set(cfg('toggleVisibility'), (st: any) => st.updateConfig({ mainAlpha: st.config.mainAlpha > 0 ? 0 : 1 }))
   m.set(cfg('prevTick'), (st: any) => {
-    const sorted = [...st.config.ticks].sort((a: any, b: any) => a.distance - b.distance)
+    const sorted = visibleTicks(st).sort((a: any, b: any) => a.distance - b.distance)
     if (sorted.length === 0) return
     const idx = sorted.findIndex((t: any) => t.id === st.selectedTickId)
     st.selectTick(idx < sorted.length - 1 ? sorted[idx + 1].id : sorted[0].id)
   })
   m.set(cfg('nextTick'), (st: any) => {
-    const sorted = [...st.config.ticks].sort((a: any, b: any) => b.distance - a.distance)
+    const sorted = visibleTicks(st).sort((a: any, b: any) => b.distance - a.distance)
     if (sorted.length === 0) return
     const idx = sorted.findIndex((t: any) => t.id === st.selectedTickId)
     st.selectTick(idx < sorted.length - 1 ? sorted[idx + 1].id : sorted[0].id)
