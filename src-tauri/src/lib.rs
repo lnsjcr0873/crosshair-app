@@ -4,10 +4,10 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .setup(|app| {
+        .setup(|_app| {
             #[cfg(debug_assertions)]
             {
-                let _ = app.get_webview_window("main").map(|w| {
+                let _ = _app.get_webview_window("main").map(|w| {
                     let _ = w.open_devtools();
                 });
             }

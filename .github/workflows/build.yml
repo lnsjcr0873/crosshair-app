@@ -37,6 +37,5 @@ jobs:
         with:
           name: crosshair-app-windows
           path: |
-            src-tauri/target/release/*.msi
             src-tauri/target/release/*.exe
           if-no-files-found: warn
