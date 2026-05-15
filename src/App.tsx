@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import TitleBar from './components/TitleBar'
 import Toolbar from './components/Toolbar'
 import CanvasPreview from './components/CanvasPreview'
@@ -47,6 +47,7 @@ const OVERLAY_SHORTCUTS: [string, (st: ReturnType<typeof useCrosshairStore.getSt
 
 export default function App() {
   const overlayMode = useCrosshairStore((s) => s.overlayMode)
+  const arrowCount = useRef<Record<string, number>>({})
 
   // window management for overlay mode (called directly from keyboard handler)
   useEffect(() => { setOverlayWindow(overlayMode) }, [overlayMode])
@@ -104,13 +105,30 @@ export default function App() {
         return
       }
       if (!tick) return
-      if (e.code === 'ArrowUp') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance - 1); return }
-      if (e.code === 'ArrowDown') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance + 1); return }
+      if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+        e.preventDefault()
+        if (!e.repeat) arrowCount.current[e.code] = 0
+        arrowCount.current[e.code] = (arrowCount.current[e.code] || 0) + 1
+        const c = arrowCount.current[e.code]
+        const step = Math.min(Math.floor(c / 5) + 1, 5)
+        const dir = e.code === 'ArrowDown' ? 1 : -1
+        st.moveTick(st.selectedTickId!, tick.distance + dir * step)
+        return
+      }
       if (e.code === 'BracketLeft') { e.preventDefault(); st.updateTick(st.selectedTickId!, { lineLength: Math.max(2, tick.lineLength - 1) }); return }
       if (e.code === 'BracketRight') { e.preventDefault(); st.updateTick(st.selectedTickId!, { lineLength: Math.min(80, tick.lineLength + 1) }); return }
     }
     window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+
+    const resetArrow = (e: KeyboardEvent) => {
+      if (e.code === 'ArrowUp' || e.code === 'ArrowDown') arrowCount.current[e.code] = 0
+    }
+    window.addEventListener('keyup', resetArrow)
+
+    return () => {
+      window.removeEventListener('keydown', handler)
+      window.removeEventListener('keyup', resetArrow)
+    }
   }, [])
 
   return (

@@ -106,7 +106,11 @@ export default function CanvasPreview() {
     draggingRef.current = null
   }, [])
 
-  // use native wheel listener with passive:false to prevent warning
+  const scrollState = useRef({ step: 1, acc: 0, timer: 0 })
+  const SCROLL_THRESHOLD = 10
+  const MAX_STEP = 81
+
+  // use native wheel listener with passive:false
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -122,11 +126,20 @@ export default function CanvasPreview() {
       const curConfig = useCrosshairStore.getState().config
       const tick = curConfig.ticks.find((t) => t.id === sid)
       if (!tick) return
+      const s = scrollState.current
+      clearTimeout(s.timer)
       const dir = e.deltaY > 0 ? 1 : -1
-      useCrosshairStore.getState().moveTick(sid, tick.distance + dir * 3)
+      s.acc += 1
+      if (s.acc >= SCROLL_THRESHOLD) { s.step = Math.min(s.step * 3, MAX_STEP); s.acc = 0 }
+      useCrosshairStore.getState().moveTick(sid, tick.distance + dir * s.step)
+      s.timer = window.setTimeout(() => { s.step = 1; s.acc = 0 }, 1000)
     }
     canvas.addEventListener('wheel', handler, { passive: false })
-    return () => { canvas.removeEventListener('wheel', handler) }
+    return () => {
+      canvas.removeEventListener('wheel', handler)
+      clearTimeout(scrollState.current.timer)
+      scrollState.current.step = 1; scrollState.current.acc = 0
+    }
   }, [])
 
   return (
