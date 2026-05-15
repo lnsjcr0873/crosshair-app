@@ -26,12 +26,12 @@ const OVERLAY_SHORTCUTS: [string, (st: ReturnType<typeof useCrosshairStore.getSt
   ['ArrowUp', (st) => {
     if (!st.selectedTickId) return
     const tick = st.config.ticks.find((t) => t.id === st.selectedTickId)
-    if (tick) st.moveTick(st.selectedTickId, tick.distance + 1)
+    if (tick) st.moveTick(st.selectedTickId, tick.distance - 1)
   }],
   ['ArrowDown', (st) => {
     if (!st.selectedTickId) return
     const tick = st.config.ticks.find((t) => t.id === st.selectedTickId)
-    if (tick) st.moveTick(st.selectedTickId, tick.distance - 1)
+    if (tick) st.moveTick(st.selectedTickId, tick.distance + 1)
   }],
   [']', (st) => {
     if (!st.selectedTickId) return
@@ -48,11 +48,8 @@ const OVERLAY_SHORTCUTS: [string, (st: ReturnType<typeof useCrosshairStore.getSt
 export default function App() {
   const overlayMode = useCrosshairStore((s) => s.overlayMode)
 
-  // window management
-  useEffect(() => {
-    const timer = setTimeout(() => { setOverlayWindow(overlayMode) }, 300)
-    return () => clearTimeout(timer)
-  }, [overlayMode])
+  // window management for overlay mode (called directly from keyboard handler)
+  useEffect(() => { setOverlayWindow(overlayMode) }, [overlayMode])
 
   // global shortcuts for overlay mode (works even when game has focus)
   useEffect(() => {
@@ -107,8 +104,8 @@ export default function App() {
         return
       }
       if (!tick) return
-      if (e.code === 'ArrowDown') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance - 1); return }
-      if (e.code === 'ArrowUp') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance + 1); return }
+      if (e.code === 'ArrowUp') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance - 1); return }
+      if (e.code === 'ArrowDown') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance + 1); return }
       if (e.code === 'BracketLeft') { e.preventDefault(); st.updateTick(st.selectedTickId!, { lineLength: Math.max(2, tick.lineLength - 1) }); return }
       if (e.code === 'BracketRight') { e.preventDefault(); st.updateTick(st.selectedTickId!, { lineLength: Math.min(80, tick.lineLength + 1) }); return }
     }

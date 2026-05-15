@@ -15,23 +15,28 @@ export default function CanvasPreview() {
 
   // draw
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
     const container = containerRef.current
-    if (!container) return
+    const canvas = canvasRef.current
+    if (!canvas || !container) return
 
-    const dpr = window.devicePixelRatio || 1
-    const rect = container.getBoundingClientRect()
-    canvas.width = rect.width * dpr
-    canvas.height = rect.height * dpr
-    canvas.style.width = `${rect.width}px`
-    canvas.style.height = `${rect.height}px`
-    ctx.scale(dpr, dpr)
+    const draw = () => {
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      const dpr = window.devicePixelRatio || 1
+      const rect = container.getBoundingClientRect()
+      canvas.width = rect.width * dpr
+      canvas.height = rect.height * dpr
+      canvas.style.width = `${rect.width}px`
+      canvas.style.height = `${rect.height}px`
+      ctx.scale(dpr, dpr)
+      renderCrosshair(ctx, config, rect.width, rect.height, scale, selectedTickId)
+    }
 
-    renderCrosshair(ctx, config, rect.width, rect.height, scale, selectedTickId)
+    draw()
+
+    const ro = new ResizeObserver(() => draw())
+    ro.observe(container)
+    return () => ro.disconnect()
   })
 
   // click to select
@@ -101,9 +106,6 @@ export default function CanvasPreview() {
     draggingRef.current = null
   }, [])
 
-  const scrollState = useRef({ step: 1, acc: 0, timer: 0 })
-  const SCROLL_THRESHOLD = 10
-
   // use native wheel listener with passive:false to prevent warning
   useEffect(() => {
     const canvas = canvasRef.current
@@ -120,20 +122,11 @@ export default function CanvasPreview() {
       const curConfig = useCrosshairStore.getState().config
       const tick = curConfig.ticks.find((t) => t.id === sid)
       if (!tick) return
-      const s = scrollState.current
-      clearTimeout(s.timer)
       const dir = e.deltaY > 0 ? 1 : -1
-      s.acc += 1
-      if (s.acc >= SCROLL_THRESHOLD) { s.step *= 3; s.acc = 0 }
-      useCrosshairStore.getState().moveTick(sid, tick.distance + dir * s.step)
-      s.timer = window.setTimeout(() => { s.step = 1; s.acc = 0 }, 1000)
+      useCrosshairStore.getState().moveTick(sid, tick.distance + dir * 3)
     }
     canvas.addEventListener('wheel', handler, { passive: false })
-    return () => {
-      canvas.removeEventListener('wheel', handler)
-      clearTimeout(scrollState.current.timer)
-      scrollState.current.step = 1; scrollState.current.acc = 0
-    }
+    return () => { canvas.removeEventListener('wheel', handler) }
   }, [])
 
   return (
