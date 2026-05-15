@@ -6,7 +6,7 @@ import TickList from './components/TickList'
 import TickPropertyPanel from './components/TickPropertyPanel'
 import { useCrosshairStore } from './store/crosshairStore'
 import { exportPng, savePreset } from './engine/actions'
-import { isTauri, setOverlayWindow, registerShortcut, unregisterShortcut } from './engine/tauri'
+import { isTauri, setOverlayWindow, registerShortcut, registerRepeatShortcut, clearArrowRepeat } from './engine/tauri'
 
 function visibleTicks(st: any) {
   return st.config.ticks.filter((t: any) => {
@@ -124,19 +124,54 @@ export default function App() {
     }
   }, [overlayMode])
 
-  // global shortcuts for overlay mode (build from hotkeys)
+  // always-on global shortcuts (work even when window not focused)
+  useEffect(() => {
+    if (!isTauri()) return
+    const h = useCrosshairStore.getState().hotkeys
+    registerShortcut(h.toggleOverlay, () => {
+      const st = useCrosshairStore.getState()
+      st.setOverlayMode(!st.overlayMode)
+    })
+    registerShortcut(h.toggleVisibility, () => {
+      const st = useCrosshairStore.getState()
+      st.updateConfig({ mainAlpha: st.config.mainAlpha > 0 ? 0 : 1 })
+    })
+  }, [])
+
+  // overlay mode global shortcuts (with repeat for arrows)
   useEffect(() => {
     if (!isTauri()) return
     if (!overlayMode) return
-    const h = useCrosshairStore.getState().hotkeys
-    const entries = Object.entries(h).filter(([k]) => !k.startsWith('switchConfig'))
-    Promise.all(entries.map(([, shortcut]) =>
-      registerShortcut(shortcut, () => {
-        const act = buildActionMap().get(shortcut)
-        if (act) act(useCrosshairStore.getState())
+    const st = useCrosshairStore.getState()
+    const h = st.hotkeys
+
+    const registerFromMap = async (key: string, repeat = false) => {
+      const shortcut = h[key]
+      if (!shortcut) return
+      const action = buildActionMap().get(shortcut)
+      if (!action) return
+      if (repeat) {
+        await registerRepeatShortcut(shortcut, () => action(useCrosshairStore.getState()), 80)
+      } else {
+        await registerShortcut(shortcut, () => action(useCrosshairStore.getState()))
+      }
+    }
+
+    const repeatKeys = ['incDistance', 'decDistance', 'incLineLength', 'decLineLength']
+    const onceKeys = ['prevTick', 'nextTick']
+
+    Promise.all([
+      ...onceKeys.map((k) => registerFromMap(k, false)),
+      ...repeatKeys.map((k) => registerFromMap(k, true)),
+    ])
+
+    return () => {
+      clearArrowRepeat()
+      Object.values(h).forEach((s) => {
+        if (s === h.toggleOverlay || s === h.toggleVisibility) return
+        import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => unregister(s))
       })
-    ))
-    return () => { entries.forEach(([, s]) => unregisterShortcut(s)) }
+    }
   }, [overlayMode])
 
   // keyboard handler (editor mode + browser fallback for overlay)
@@ -176,8 +211,9 @@ export default function App() {
       const combo = parts.join('+')
       const action = buildActionMap().get(combo)
       if (action) {
-        // toggleOverlay and toggleVisibility and switchConfig work in both modes
         const h = useCrosshairStore.getState().hotkeys
+        // In Tauri, toggleOverlay/toggleVisibility handled by global shortcuts (work when unfocused)
+        if (isTauri() && (combo === h.toggleOverlay || combo === h.toggleVisibility)) return
         const isGlobal = combo === h.toggleOverlay || combo === h.toggleVisibility || combo.startsWith('Ctrl+')
         if (isGlobal || st.overlayMode) {
           e.preventDefault()

@@ -52,10 +52,38 @@ export async function setOverlayWindow(enabled: boolean): Promise<void> {
 
 type ShortcutHandler = () => void
 
+let arrowInterval: number | null = null
+
 export async function registerShortcut(shortcut: string, handler: ShortcutHandler): Promise<void> {
   if (!isTauri()) return
   const { register } = await import('@tauri-apps/plugin-global-shortcut')
   await register(shortcut, (action) => { if (action.state === 'Pressed') handler() })
+}
+
+export async function registerRepeatShortcut(shortcut: string, onPress: () => void, intervalMs: number = 80): Promise<void> {
+  if (!isTauri()) return
+  const { register } = await import('@tauri-apps/plugin-global-shortcut')
+  await register(shortcut, (action) => {
+    if (action.state === 'Pressed') {
+      onPress()
+      arrowInterval = window.setInterval(onPress, intervalMs)
+    } else {
+      if (arrowInterval !== null) { clearInterval(arrowInterval); arrowInterval = null }
+    }
+  })
+}
+
+export function clearArrowRepeat(): void {
+  if (arrowInterval !== null) { clearInterval(arrowInterval); arrowInterval = null }
+}
+
+export async function registerShortcutWithRelease(shortcut: string, onPress: () => void, onRelease: () => void): Promise<void> {
+  if (!isTauri()) return
+  const { register } = await import('@tauri-apps/plugin-global-shortcut')
+  await register(shortcut, (action) => {
+    if (action.state === 'Pressed') onPress()
+    else onRelease()
+  })
 }
 
 export async function unregisterShortcut(shortcut: string): Promise<void> {
