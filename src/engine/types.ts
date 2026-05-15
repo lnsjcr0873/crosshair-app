@@ -23,13 +23,41 @@ export interface CrosshairConfig {
   bgAlpha: number
   horizontalLineLength: number
   verticalLineLength: number
-  showTopPost: boolean
   topPostLength: number
+  showTopLine: boolean
+  showTopTicks: boolean
+  showBottomLine: boolean
+  showBottomTicks: boolean
   showLeftLine: boolean
   showRightLine: boolean
   showLeftTicks: boolean
   showRightTicks: boolean
   ticks: TickMark[]
+}
+
+export interface ConfigEntry {
+  name: string
+  config: CrosshairConfig
+}
+
+export const DEFAULT_HOTKEYS = {
+  toggleOverlay: 'Ctrl+Shift+2',
+  toggleVisibility: 'Ctrl+Shift+H',
+  prevTick: 'PageUp',
+  nextTick: 'PageDown',
+  incDistance: 'ArrowDown',
+  decDistance: 'ArrowUp',
+  incLineLength: 'BracketRight',
+  decLineLength: 'BracketLeft',
+  switchConfig1: 'Ctrl+1',
+  switchConfig2: 'Ctrl+2',
+  switchConfig3: 'Ctrl+3',
+  switchConfig4: 'Ctrl+4',
+  switchConfig5: 'Ctrl+5',
+  switchConfig6: 'Ctrl+6',
+  switchConfig7: 'Ctrl+7',
+  switchConfig8: 'Ctrl+8',
+  switchConfig9: 'Ctrl+9',
 }
 
 export function createDefaultConfig(): CrosshairConfig {
@@ -43,8 +71,11 @@ export function createDefaultConfig(): CrosshairConfig {
     bgAlpha: 0,
     horizontalLineLength: 300,
     verticalLineLength: 300,
-    showTopPost: false,
     topPostLength: 300,
+    showTopLine: false,
+    showTopTicks: false,
+    showBottomLine: true,
+    showBottomTicks: true,
     showLeftLine: true,
     showRightLine: true,
     showLeftTicks: true,

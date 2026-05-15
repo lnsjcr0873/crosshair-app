@@ -48,13 +48,15 @@ export function renderCrosshair(
   ctx.stroke()
 
   // draw bottom vertical post (downward from center)
-  ctx.beginPath()
-  ctx.moveTo(0, gap)
-  ctx.lineTo(0, config.verticalLineLength)
-  ctx.stroke()
+  if (config.showBottomLine) {
+    ctx.beginPath()
+    ctx.moveTo(0, gap)
+    ctx.lineTo(0, config.verticalLineLength)
+    ctx.stroke()
+  }
 
   // draw top vertical post (upward from center)
-  if (config.showTopPost) {
+  if (config.showTopLine) {
     ctx.beginPath()
     ctx.moveTo(0, -gap)
     ctx.lineTo(0, -config.topPostLength)
@@ -64,7 +66,8 @@ export function renderCrosshair(
   // draw ticks
   for (const tick of config.ticks) {
     if (!tick.visible) continue
-    if (tick.axis === 'vertical' && tick.distance < 0 && !config.showTopPost) continue
+    if (tick.axis === 'vertical' && tick.distance < 0 && !config.showTopTicks) continue
+    if (tick.axis === 'vertical' && tick.distance >= 0 && !config.showBottomTicks) continue
     if (tick.axis === 'horizontal') {
       if (tick.distance < 0 && !config.showLeftTicks) continue
       if (tick.distance > 0 && !config.showRightTicks) continue

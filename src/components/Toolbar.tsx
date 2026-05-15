@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { useCrosshairStore } from '../store/crosshairStore'
 import { vssStylePreset, simplePreset } from '../engine/preset'
 import { exportPng, exportSvg, savePreset, loadPresetFromFile } from '../engine/actions'
+import SettingsPanel from './SettingsPanel'
 
 export default function Toolbar() {
+  const [showSettings, setShowSettings] = useState(false)
   const config = useCrosshairStore((s) => s.config)
   const updateConfig = useCrosshairStore((s) => s.updateConfig)
   const setScale = useCrosshairStore((s) => s.setScale)
@@ -25,7 +28,7 @@ export default function Toolbar() {
     } catch { alert('无效的预设文件') }
   }
 
-  return (
+  return (<>
     <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800 border-b border-zinc-700 flex-wrap">
       <span className="text-white font-semibold text-sm mr-2">准星刻度绘制</span>
 
@@ -140,26 +143,16 @@ export default function Toolbar() {
       </div>
 
       <div className="flex items-center gap-1 text-xs text-zinc-400">
-        <span>上柱</span>
-        <button
-          onClick={() => updateConfig({ showTopPost: !config.showTopPost })}
-          className={`text-xs px-2 py-0.5 rounded border ${config.showTopPost ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
-        >
-          {config.showTopPost ? 'ON' : 'OFF'}
-        </button>
-        {config.showTopPost && (
-          <>
-            <input
-              type="range"
-              min={60}
-              max={400}
-              value={config.topPostLength}
-              onChange={(e) => updateConfig({ topPostLength: Number(e.target.value) })}
-              className="w-16"
-            />
-            <span className="text-zinc-500 w-6">{config.topPostLength}</span>
-          </>
-        )}
+        <span>上柱长</span>
+        <input
+          type="range"
+          min={60}
+          max={400}
+          value={config.topPostLength}
+          onChange={(e) => updateConfig({ topPostLength: Number(e.target.value) })}
+          className="w-16"
+        />
+        <span className="text-zinc-500 w-6">{config.topPostLength}</span>
       </div>
 
       <button
@@ -184,6 +177,11 @@ export default function Toolbar() {
       <button onClick={handleLoad} className="btn-secondary text-xs">
         加载预设
       </button>
+
+      <button onClick={() => setShowSettings(!showSettings)} className="btn-icon text-base" title="快捷键设置">
+        ⚙
+      </button>
     </div>
-  )
+    {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+  </>)
 }

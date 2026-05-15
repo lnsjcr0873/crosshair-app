@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { defaultPreset } from '../engine/preset'
-import type { CrosshairConfig, TickMark } from '../engine/types'
-import { createTick, generateId, createDefaultConfig } from '../engine/types'
+import type { CrosshairConfig, TickMark, ConfigEntry } from '../engine/types'
+import { createTick, generateId, createDefaultConfig, DEFAULT_HOTKEYS } from '../engine/types'
 
 interface HistoryEntry {
   config: CrosshairConfig
@@ -15,6 +15,9 @@ interface CrosshairStore {
   symmetricMode: boolean
   history: HistoryEntry[]
   historyIndex: number
+  configList: ConfigEntry[]
+  activeIndex: number
+  hotkeys: Record<string, string>
 
   setConfig: (config: CrosshairConfig) => void
   updateConfig: (partial: Partial<CrosshairConfig>) => void
@@ -32,6 +35,14 @@ interface CrosshairStore {
 
   undo: () => void
   redo: () => void
+
+  // multi-config
+  newConfig: (copyCurrent: boolean) => void
+  deleteConfig: () => void
+  renameConfig: (name: string) => void
+  switchConfig: (index: number) => void
+  updateHotkeys: (key: string, value: string) => void
+  resetHotkeys: () => void
 }
 
 function pushHistory(
@@ -64,6 +75,12 @@ function updateTicks(ticks: TickMark[], id: string, partial: Partial<TickMark>, 
   return result
 }
 
+function syncListEntry(s: CrosshairStore, newConfig: CrosshairConfig) {
+  const list = [...s.configList]
+  list[s.activeIndex] = { ...list[s.activeIndex], config: newConfig }
+  return list
+}
+
 export const useCrosshairStore = create<CrosshairStore>((set, get) => {
   const initial = defaultPreset()
   const initialEntry: HistoryEntry = { config: structuredClone(initial) }
@@ -76,26 +93,22 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     symmetricMode: true,
     history: [initialEntry],
     historyIndex: 0,
+    configList: [{ name: '默认准星', config: initial }],
+    activeIndex: 0,
+    hotkeys: { ...DEFAULT_HOTKEYS },
 
-    setConfig: (config) => set((s) => pushHistory(s.history, s.historyIndex, config)),
+    setConfig: (config) => set((s) => ({
+      ...pushHistory(s.history, s.historyIndex, config),
+      configList: syncListEntry(s, config),
+    })),
 
     updateConfig: (partial) =>
       set((s) => {
         const newConfig = { ...s.config, ...partial }
-        // when toggling top post ON, auto-create mirror ticks for all bottom ticks
-        if (partial.showTopPost === true && !s.config.showTopPost) {
-          const existingTops = new Set(s.config.ticks.filter((t) => t.axis === 'vertical' && t.distance < 0).map((t) => Math.abs(Math.round(t.distance))))
-          const newTicks = [...s.config.ticks]
-          for (const bt of s.config.ticks) {
-            if (bt.axis === 'vertical' && bt.distance > 0 && !existingTops.has(Math.round(bt.distance))) {
-              newTicks.push({ ...bt, id: generateId(), distance: -bt.distance })
-            }
-          }
-          if (newTicks.length !== s.config.ticks.length) {
-            newConfig.ticks = newTicks
-          }
+        return {
+          ...pushHistory(s.history, s.historyIndex, newConfig),
+          configList: syncListEntry(s, newConfig),
         }
-        return pushHistory(s.history, s.historyIndex, newConfig)
       }),
 
     selectTick: (id) => set({ selectedTickId: id }),
@@ -116,16 +129,18 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
         }
         const newConfig = { ...s.config, ticks: allTicks }
         const { history, historyIndex, config } = pushHistory(s.history, s.historyIndex, newConfig)
-        return { history, historyIndex, config, selectedTickId: tick.id }
+        return { history, historyIndex, config: config, selectedTickId: tick.id, configList: syncListEntry(s, config) }
       }),
 
     removeTick: (id) =>
       set((s) => {
         const ticks = s.config.ticks.filter((t) => t.id !== id)
         const newConfig = { ...s.config, ticks }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
         return {
-          ...pushHistory(s.history, s.historyIndex, newConfig),
+          ...result,
           selectedTickId: s.selectedTickId === id ? null : s.selectedTickId,
+          configList: syncListEntry(s, result.config),
         }
       }),
 
@@ -133,7 +148,8 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
       set((s) => {
         const ticks = updateTicks(s.config.ticks, id, partial, s.symmetricMode)
         const newConfig = { ...s.config, ticks }
-        return pushHistory(s.history, s.historyIndex, newConfig)
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config) }
       }),
 
     moveTick: (id, newDistance) =>
@@ -141,7 +157,8 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
         const partial: Partial<TickMark> = { distance: newDistance }
         const ticks = updateTicks(s.config.ticks, id, partial, s.symmetricMode)
         const newConfig = { ...s.config, ticks }
-        return pushHistory(s.history, s.historyIndex, newConfig)
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config) }
       }),
 
     duplicateTick: (id) =>
@@ -151,28 +168,74 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
         const newTick = { ...orig, id: generateId(), distance: orig.distance + 10 }
         const ticks = [...s.config.ticks, newTick]
         const newConfig = { ...s.config, ticks }
-        return { ...pushHistory(s.history, s.historyIndex, newConfig), selectedTickId: newTick.id }
+        const result = { ...pushHistory(s.history, s.historyIndex, newConfig), selectedTickId: newTick.id }
+        return { ...result, configList: syncListEntry(s, result.config) }
       }),
 
     loadPreset: (config) =>
       set(() => {
         const merged = { ...createDefaultConfig(), ...config, ticks: config.ticks || [] }
         const entry: HistoryEntry = { config: structuredClone(merged) }
-        return { config: merged, history: [entry], historyIndex: 0, selectedTickId: null }
+        const list: ConfigEntry[] = [{ name: merged.name || '预设', config: merged }]
+        return { config: merged, history: [entry], historyIndex: 0, selectedTickId: null, configList: list, activeIndex: 0 }
       }),
 
     undo: () =>
       set((s) => {
         if (s.historyIndex <= 0) return s
         const newIndex = s.historyIndex - 1
-        return { config: structuredClone(s.history[newIndex].config), historyIndex: newIndex }
+        const cfg = structuredClone(s.history[newIndex].config)
+        return { config: cfg, historyIndex: newIndex, configList: syncListEntry(s, cfg) }
       }),
 
     redo: () =>
       set((s) => {
         if (s.historyIndex >= s.history.length - 1) return s
         const newIndex = s.historyIndex + 1
-        return { config: structuredClone(s.history[newIndex].config), historyIndex: newIndex }
+        const cfg = structuredClone(s.history[newIndex].config)
+        return { config: cfg, historyIndex: newIndex, configList: syncListEntry(s, cfg) }
       }),
+
+    // multi-config
+    newConfig: (copyCurrent) =>
+      set((s) => {
+        const cfg = copyCurrent ? structuredClone(s.config) : createDefaultConfig()
+        const entry: ConfigEntry = { name: cfg.name || '新配置', config: cfg }
+        const list = [...s.configList, entry]
+        const idx = list.length - 1
+        const histEntry: HistoryEntry = { config: structuredClone(cfg) }
+        return { configList: list, activeIndex: idx, config: cfg, history: [histEntry], historyIndex: 0, selectedTickId: null }
+      }),
+
+    deleteConfig: () =>
+      set((s) => {
+        if (s.configList.length <= 1) return s
+        const list = s.configList.filter((_, i) => i !== s.activeIndex)
+        const idx = Math.min(s.activeIndex, list.length - 1)
+        const cfg = structuredClone(list[idx].config)
+        const histEntry: HistoryEntry = { config: structuredClone(cfg) }
+        return { configList: list, activeIndex: idx, config: cfg, history: [histEntry], historyIndex: 0, selectedTickId: null }
+      }),
+
+    renameConfig: (name) =>
+      set((s) => {
+        const list = [...s.configList]
+        list[s.activeIndex] = { ...list[s.activeIndex], name }
+        return { configList: list }
+      }),
+
+    switchConfig: (index) =>
+      set((s) => {
+        if (index < 0 || index >= s.configList.length) return s
+        const cfg = structuredClone(s.configList[index].config)
+        const histEntry: HistoryEntry = { config: structuredClone(cfg) }
+        return { activeIndex: index, config: cfg, history: [histEntry], historyIndex: 0, selectedTickId: null }
+      }),
+
+    updateHotkeys: (key, value) =>
+      set((s) => ({ hotkeys: { ...s.hotkeys, [key]: value } })),
+
+    resetHotkeys: () =>
+      set({ hotkeys: { ...DEFAULT_HOTKEYS } }),
   }
 })

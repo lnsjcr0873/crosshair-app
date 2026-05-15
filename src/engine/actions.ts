@@ -41,12 +41,13 @@ export function generateSvg(config: CrosshairConfig): string {
     lines.push(tag('line', { x1: cx + gap, y1: cy, x2: w, y2: cy, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
   }
   lines.push(tag('line', { x1: cx, y1: cy + gap, x2: cx, y2: h, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
-  if (config.showTopPost) {
+  if (config.showTopLine) {
     lines.push(tag('line', { x1: cx, y1: cy - gap, x2: cx, y2: cy - config.topPostLength, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
   }
   for (const tick of config.ticks) {
     if (!tick.visible) continue
-    if (tick.axis === 'vertical' && tick.distance < 0 && !config.showTopPost) continue
+    if (tick.axis === 'vertical' && tick.distance < 0 && !config.showTopTicks) continue
+    if (tick.axis === 'vertical' && tick.distance >= 0 && !config.showBottomTicks) continue
     if (tick.axis === 'horizontal' && tick.distance < 0 && !config.showLeftTicks) continue
     if (tick.axis === 'horizontal' && tick.distance > 0 && !config.showRightTicks) continue
     const dir = tick.direction ?? (tick.axis === 'horizontal' ? -1 : 1)

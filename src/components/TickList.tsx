@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useCrosshairStore } from '../store/crosshairStore'
 
 const MAX_DIST = 1000
@@ -10,6 +11,17 @@ export default function TickList() {
   const addTick = useCrosshairStore((s) => s.addTick)
   const removeTick = useCrosshairStore((s) => s.removeTick)
 
+  const configList = useCrosshairStore((s) => s.configList)
+  const activeIndex = useCrosshairStore((s) => s.activeIndex)
+  const switchConfig = useCrosshairStore((s) => s.switchConfig)
+  const newConfig = useCrosshairStore((s) => s.newConfig)
+  const deleteConfig = useCrosshairStore((s) => s.deleteConfig)
+  const renameConfig = useCrosshairStore((s) => s.renameConfig)
+
+  const [renaming, setRenaming] = useState(false)
+  const [nameBuf, setNameBuf] = useState('')
+  const [showNewOpts, setShowNewOpts] = useState(false)
+
   const hUpTicks = config.ticks.filter((t) => t.axis === 'horizontal' && (t.direction ?? -1) === -1)
   const hDownTicks = config.ticks.filter((t) => t.axis === 'horizontal' && (t.direction ?? -1) === 1)
   const topTicks = config.ticks.filter((t) => t.axis === 'vertical' && t.distance < 0)
@@ -19,8 +31,17 @@ export default function TickList() {
   const handleAdd = (axis: 'horizontal' | 'vertical', ticks: typeof config.ticks, direction?: 1 | -1) => {
     const last = ticks[ticks.length - 1]
     const step = direction === -1 && axis === 'vertical' ? -40 : 40
-    const dist = last ? Math.min(Math.max(last.distance + step, -MAX_DIST), MAX_DIST) : (axis === 'horizontal' ? 30 : 30)
+    const dist = last ? Math.min(Math.max(last.distance + step, -MAX_DIST), MAX_DIST) : 30
     addTick(axis, dist, direction)
+  }
+
+  const startRename = () => {
+    setNameBuf(configList[activeIndex]?.name || '')
+    setRenaming(true)
+  }
+  const commitRename = () => {
+    if (nameBuf.trim()) renameConfig(nameBuf.trim())
+    setRenaming(false)
   }
 
   return (
@@ -30,13 +51,13 @@ export default function TickList() {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold">上立柱</h3>
           <button
-            onClick={() => updateConfig({ showTopPost: !config.showTopPost })}
-            className={`text-xs px-2 py-0.5 rounded border ${config.showTopPost ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
+            onClick={() => updateConfig({ showTopLine: !config.showTopLine })}
+            className={`text-xs px-2 py-0.5 rounded border ${config.showTopLine ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
           >
-            {config.showTopPost ? 'ON' : 'OFF'}
+            {config.showTopLine ? 'ON' : 'OFF'}
           </button>
         </div>
-        {config.showTopPost && (
+        {config.showTopLine && (
           <div className="flex items-center gap-2 text-xs text-zinc-400 pl-1">
             <span>长度</span>
             <input
@@ -109,7 +130,7 @@ export default function TickList() {
       </div>
 
       {/* 上立柱刻度 */}
-      {config.showTopPost && (
+      {config.showTopTicks && (
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-white font-semibold">上立柱</h3>
@@ -129,6 +150,7 @@ export default function TickList() {
       )}
 
       {/* 下立柱刻度 → */}
+      {config.showBottomTicks && (
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold">下立柱 →</h3>
@@ -145,8 +167,10 @@ export default function TickList() {
           {bottomRightTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
       </div>
+      )}
 
       {/* 下立柱刻度 ← */}
+      {config.showBottomTicks && (
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold">下立柱 ←</h3>
@@ -163,6 +187,7 @@ export default function TickList() {
           {bottomLeftTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
       </div>
+      )}
     </div>
   )
 }
