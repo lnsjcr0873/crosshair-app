@@ -175,6 +175,11 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     loadPreset: (config) =>
       set(() => {
         const merged = { ...createDefaultConfig(), ...config, ticks: config.ticks || [] }
+        // backward compat: old presets used showTopPost instead of showTopLine + showTopTicks
+        if ('showTopPost' in config) {
+          merged.showTopLine = (config as any).showTopPost as boolean
+          merged.showTopTicks = (config as any).showTopPost as boolean
+        }
         const entry: HistoryEntry = { config: structuredClone(merged) }
         const list: ConfigEntry[] = [{ name: merged.name || '预设', config: merged }]
         return { config: merged, history: [entry], historyIndex: 0, selectedTickId: null, configList: list, activeIndex: 0 }

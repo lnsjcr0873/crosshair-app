@@ -46,35 +46,49 @@ export default function TickList() {
 
   return (
     <div className="p-4 space-y-4 text-sm">
-      {/* 上立柱 */}
+      {/* 配置管理 */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-white font-semibold">上立柱</h3>
-          <button
-            onClick={() => updateConfig({ showTopLine: !config.showTopLine })}
-            className={`text-xs px-2 py-0.5 rounded border ${config.showTopLine ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
+          <select
+            value={activeIndex}
+            onChange={(e) => switchConfig(Number(e.target.value))}
+            className="input-field text-xs flex-1 mr-2"
           >
-            {config.showTopLine ? 'ON' : 'OFF'}
-          </button>
+            {configList.map((e, i) => (
+              <option key={i} value={i}>{e.name}</option>
+            ))}
+          </select>
         </div>
-        {config.showTopLine && (
-          <div className="flex items-center gap-2 text-xs text-zinc-400 pl-1">
-            <span>长度</span>
-            <input
-              type="range"
-              min={60}
-              max={400}
-              value={config.topPostLength}
-              onChange={(e) => updateConfig({ topPostLength: Number(e.target.value) })}
-              className="flex-1"
-            />
-            <span className="text-zinc-500 w-6">{config.topPostLength}</span>
-          </div>
+        {renaming ? (
+          <input autoFocus value={nameBuf} onChange={(e) => setNameBuf(e.target.value)} onBlur={commitRename} onKeyDown={(e) => e.key === 'Enter' && commitRename()} className="input-field text-xs mb-2" />
+        ) : (
+          <div className="text-zinc-300 text-xs mb-2 cursor-pointer hover:text-white" onClick={startRename}>{configList[activeIndex]?.name || '未命名'}</div>
         )}
+        <div className="flex gap-2">
+          <button onClick={() => newConfig(true)} className="btn-secondary text-xs flex-1">复制</button>
+          <button onClick={() => newConfig(false)} className="btn-secondary text-xs flex-1">新建</button>
+          <button onClick={deleteConfig} disabled={configList.length <= 1} className="btn-danger text-xs flex-1">删除</button>
+        </div>
       </div>
 
-      {/* 水平线/刻度开关 */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+      {/* 开关 */}
+      <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs">
+        <label className="flex items-center gap-1 text-zinc-400">
+          <input type="checkbox" checked={config.showTopLine} onChange={() => updateConfig({ showTopLine: !config.showTopLine })} />
+          上线
+        </label>
+        <label className="flex items-center gap-1 text-zinc-400">
+          <input type="checkbox" checked={config.showTopTicks} onChange={() => updateConfig({ showTopTicks: !config.showTopTicks })} />
+          上刻度
+        </label>
+        <label className="flex items-center gap-1 text-zinc-400">
+          <input type="checkbox" checked={config.showBottomLine} onChange={() => updateConfig({ showBottomLine: !config.showBottomLine })} />
+          下线
+        </label>
+        <label className="flex items-center gap-1 text-zinc-400">
+          <input type="checkbox" checked={config.showBottomTicks} onChange={() => updateConfig({ showBottomTicks: !config.showBottomTicks })} />
+          下刻度
+        </label>
         <label className="flex items-center gap-1 text-zinc-400">
           <input type="checkbox" checked={config.showLeftLine} onChange={() => updateConfig({ showLeftLine: !config.showLeftLine })} />
           左线
@@ -92,6 +106,15 @@ export default function TickList() {
           右刻度
         </label>
       </div>
+
+      {/* 上柱长度 */}
+      {config.showTopLine && (
+        <div className="flex items-center gap-2 text-xs text-zinc-400">
+          <span>上柱长</span>
+          <input type="range" min={60} max={400} value={config.topPostLength} onChange={(e) => updateConfig({ topPostLength: Number(e.target.value) })} className="flex-1" />
+          <span className="text-zinc-500 w-6">{config.topPostLength}</span>
+        </div>
+      )}
 
       {/* 水平刻度 ↑ */}
       <div>
