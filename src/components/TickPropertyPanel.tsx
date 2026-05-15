@@ -22,9 +22,27 @@ export default function TickPropertyPanel() {
       <h3 className="text-white font-semibold mb-2">
         刻度属性
         <span className="text-zinc-400 ml-2 text-xs">
-          ({tick.axis === 'horizontal' ? '水平' : tick.distance < 0 ? '上立柱' : '下立柱'})
+          ({tick.axis === 'horizontal' ? '水平' : tick.distance < 0 ? '上立柱' : '下立柱'}
+          {tick.direction === -1 ? ' ↑' : ' ↓'})
         </span>
       </h3>
+
+      <PropRow label="方向">
+        <div className="flex gap-1">
+          <button
+            onClick={() => updateTick(tick.id, { direction: -1 })}
+            className={`text-xs px-2 py-0.5 rounded border ${tick.direction === -1 ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
+          >
+            {tick.axis === 'horizontal' ? '↑' : '←'}
+          </button>
+          <button
+            onClick={() => updateTick(tick.id, { direction: 1 })}
+            className={`text-xs px-2 py-0.5 rounded border ${tick.direction === 1 ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
+          >
+            {tick.axis === 'horizontal' ? '↓' : '→'}
+          </button>
+        </div>
+      </PropRow>
 
       <PropRow label="距离">
         <input
@@ -84,8 +102,8 @@ export default function TickPropertyPanel() {
       <PropRow label="偏移 X">
         <input
           type="range"
-          min={-20}
-          max={20}
+          min={-80}
+          max={80}
           value={tick.labelOffsetX}
           onChange={(e) => updateTick(tick.id, { labelOffsetX: Number(e.target.value) })}
           className="w-full"
@@ -96,8 +114,8 @@ export default function TickPropertyPanel() {
       <PropRow label="偏移 Y">
         <input
           type="range"
-          min={-20}
-          max={20}
+          min={-80}
+          max={80}
           value={tick.labelOffsetY}
           onChange={(e) => updateTick(tick.id, { labelOffsetY: Number(e.target.value) })}
           className="w-full"

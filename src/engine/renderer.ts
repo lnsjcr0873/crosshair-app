@@ -37,10 +37,14 @@ export function renderCrosshair(
   const gap = config.centerGap
   const hLen = config.horizontalLineLength
   ctx.beginPath()
-  ctx.moveTo(-hLen, 0)
-  ctx.lineTo(-gap, 0)
-  ctx.moveTo(gap, 0)
-  ctx.lineTo(hLen, 0)
+  if (config.showLeftLine) {
+    ctx.moveTo(-hLen, 0)
+    ctx.lineTo(-gap, 0)
+  }
+  if (config.showRightLine) {
+    ctx.moveTo(gap, 0)
+    ctx.lineTo(hLen, 0)
+  }
   ctx.stroke()
 
   // draw bottom vertical post (downward from center)
@@ -61,6 +65,10 @@ export function renderCrosshair(
   for (const tick of config.ticks) {
     if (!tick.visible) continue
     if (tick.axis === 'vertical' && tick.distance < 0 && !config.showTopPost) continue
+    if (tick.axis === 'horizontal') {
+      if (tick.distance < 0 && !config.showLeftTicks) continue
+      if (tick.distance > 0 && !config.showRightTicks) continue
+    }
     drawTick(ctx, tick, tick.id === selectedTickId)
   }
 
@@ -68,6 +76,7 @@ export function renderCrosshair(
 }
 
 function drawTick(ctx: CanvasRenderingContext2D, tick: TickMark, selected: boolean = false) {
+  const dir = tick.direction ?? (tick.axis === 'horizontal' ? -1 : 1)
   const color = selected ? SELECTED_COLOR : tick.color
   ctx.strokeStyle = color
   ctx.fillStyle = color
@@ -76,16 +85,14 @@ function drawTick(ctx: CanvasRenderingContext2D, tick: TickMark, selected: boole
   let x: number, y: number, dx: number, dy: number
 
   if (tick.axis === 'horizontal') {
-    // tick extends upward from the horizontal line
     x = tick.distance
     y = 0
     dx = 0
-    dy = -tick.lineLength
+    dy = dir * tick.lineLength
   } else {
-    // tick extends rightward from the vertical post
     x = 0
     y = tick.distance
-    dx = tick.lineLength
+    dx = dir * tick.lineLength
     dy = 0
   }
 
@@ -104,9 +111,9 @@ function drawTick(ctx: CanvasRenderingContext2D, tick: TickMark, selected: boole
     let lx: number, ly: number
     if (tick.axis === 'horizontal') {
       lx = tick.distance
-      ly = -(tick.lineLength + tick.fontSize / 2 + 4)
+      ly = dir * (tick.lineLength + tick.fontSize / 2 + 4)
     } else {
-      lx = tick.lineLength + tick.fontSize * 0.3 + 4
+      lx = dir * (tick.lineLength + tick.fontSize * 0.3 + 4)
       ly = tick.distance
     }
 
@@ -131,6 +138,7 @@ export function pickTickAtPoint(
   for (const tick of ticks) {
     if (!tick.visible) continue
 
+    const dir = tick.direction ?? (tick.axis === 'horizontal' ? -1 : 1)
     let tx = 0
     let ty = 0
     let endX = 0
@@ -140,11 +148,11 @@ export function pickTickAtPoint(
       tx = tick.distance
       ty = 0
       endX = tick.distance
-      endY = -tick.lineLength
+      endY = dir * tick.lineLength
     } else {
       tx = 0
       ty = tick.distance
-      endX = tick.lineLength
+      endX = dir * tick.lineLength
       endY = tick.distance
     }
 

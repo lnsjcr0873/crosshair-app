@@ -10,29 +10,18 @@ export default function TickList() {
   const addTick = useCrosshairStore((s) => s.addTick)
   const removeTick = useCrosshairStore((s) => s.removeTick)
 
-  const horizontalTicks = config.ticks.filter((t) => t.axis === 'horizontal')
+  const hUpTicks = config.ticks.filter((t) => t.axis === 'horizontal' && (t.direction ?? -1) === -1)
+  const hDownTicks = config.ticks.filter((t) => t.axis === 'horizontal' && (t.direction ?? -1) === 1)
   const topTicks = config.ticks.filter((t) => t.axis === 'vertical' && t.distance < 0)
-  const bottomTicks = config.ticks.filter((t) => t.axis === 'vertical' && t.distance >= 0)
+  const bottomLeftTicks = config.ticks.filter((t) => t.axis === 'vertical' && t.distance >= 0 && (t.direction ?? 1) === -1)
+  const bottomRightTicks = config.ticks.filter((t) => t.axis === 'vertical' && t.distance >= 0 && (t.direction ?? 1) === 1)
 
-  const handleAddHorizontal = () => {
-    const last = horizontalTicks[horizontalTicks.length - 1]
-    const dist = last ? Math.min(last.distance + 40, MAX_DIST) : 30
-    addTick('horizontal', dist)
+  const handleAdd = (axis: 'horizontal' | 'vertical', ticks: typeof config.ticks, direction?: 1 | -1) => {
+    const last = ticks[ticks.length - 1]
+    const step = direction === -1 && axis === 'vertical' ? -40 : 40
+    const dist = last ? Math.min(Math.max(last.distance + step, -MAX_DIST), MAX_DIST) : (axis === 'horizontal' ? 30 : 30)
+    addTick(axis, dist, direction)
   }
-
-  const handleAddTop = () => {
-    const last = topTicks[topTicks.length - 1]
-    const dist = last ? Math.max(last.distance - 40, -MAX_DIST) : -30
-    addTick('vertical', dist)
-  }
-
-  const handleAddBottom = () => {
-    const last = bottomTicks[bottomTicks.length - 1]
-    const dist = last ? Math.min(last.distance + 40, MAX_DIST) : 30
-    addTick('vertical', dist)
-  }
-
-  const lastHorizontal = horizontalTicks[horizontalTicks.length - 1]
 
   return (
     <div className="p-4 space-y-4 text-sm">
@@ -63,53 +52,59 @@ export default function TickList() {
         )}
       </div>
 
-      {/* 水平刻度 */}
+      {/* 水平线/刻度开关 */}
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+        <label className="flex items-center gap-1 text-zinc-400">
+          <input type="checkbox" checked={config.showLeftLine} onChange={() => updateConfig({ showLeftLine: !config.showLeftLine })} />
+          左线
+        </label>
+        <label className="flex items-center gap-1 text-zinc-400">
+          <input type="checkbox" checked={config.showRightLine} onChange={() => updateConfig({ showRightLine: !config.showRightLine })} />
+          右线
+        </label>
+        <label className="flex items-center gap-1 text-zinc-400">
+          <input type="checkbox" checked={config.showLeftTicks} onChange={() => updateConfig({ showLeftTicks: !config.showLeftTicks })} />
+          左刻度
+        </label>
+        <label className="flex items-center gap-1 text-zinc-400">
+          <input type="checkbox" checked={config.showRightTicks} onChange={() => updateConfig({ showRightTicks: !config.showRightTicks })} />
+          右刻度
+        </label>
+      </div>
+
+      {/* 水平刻度 ↑ */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-white font-semibold">水平刻度</h3>
-          <button onClick={handleAddHorizontal} className="btn-add">
-            + 添加
-          </button>
+          <h3 className="text-white font-semibold">水平刻度 ↑</h3>
+          <button onClick={() => handleAdd('horizontal', hUpTicks, -1)} className="btn-add">+ 添加</button>
         </div>
-        <div className="space-y-1 max-h-40 overflow-y-auto">
-          {horizontalTicks.map((t) => (
-            <div
-              key={t.id}
-              onClick={() => selectTick(t.id)}
-              className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}
-            >
-              <span className="text-zinc-300 w-16">
-                {t.distance > 0 ? `R${t.distance}` : `L${Math.abs(t.distance)}`}
-              </span>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {hUpTicks.map((t) => (
+            <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+              <span className="text-zinc-300 w-14">{t.distance > 0 ? `R${t.distance}` : `L${Math.abs(t.distance)}`}</span>
               <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  removeTick(t.id)
-                }}
-                className="text-red-500 hover:text-red-400 text-xs"
-              >
-                ×
-              </button>
+              <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
             </div>
           ))}
-          {horizontalTicks.length === 0 && (
-            <div className="text-zinc-600 text-xs py-1">暂无刻度</div>
-          )}
+          {hUpTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
-        <div className="flex gap-2 mt-2">
-          <button
-            onClick={() => {
-              if (lastHorizontal) {
-                const neg = lastHorizontal.distance > 0 ? -lastHorizontal.distance : 0
-                if (neg !== 0 && !horizontalTicks.some((t) => Math.abs(t.distance - neg) < 2)) addTick('horizontal', neg)
-              }
-            }}
-            className="btn-secondary text-xs"
-            disabled={!lastHorizontal}
-          >
-            对称添加
-          </button>
+      </div>
+
+      {/* 水平刻度 ↓ */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-white font-semibold">水平刻度 ↓</h3>
+          <button onClick={() => handleAdd('horizontal', hDownTicks, 1)} className="btn-add">+ 添加</button>
+        </div>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {hDownTicks.map((t) => (
+            <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+              <span className="text-zinc-300 w-14">{t.distance > 0 ? `R${t.distance}` : `L${Math.abs(t.distance)}`}</span>
+              <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
+              <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
+            </div>
+          ))}
+          {hDownTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
       </div>
 
@@ -117,59 +112,55 @@ export default function TickList() {
       {config.showTopPost && (
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-white font-semibold">上立柱刻度</h3>
-            <button onClick={handleAddTop} className="btn-add">
-              + 添加
-            </button>
+            <h3 className="text-white font-semibold">上立柱</h3>
+            <button onClick={() => handleAdd('vertical', topTicks, 1)} className="btn-add">+ 添加</button>
           </div>
-          <div className="space-y-1 max-h-40 overflow-y-auto">
+          <div className="space-y-1 max-h-32 overflow-y-auto">
             {topTicks.map((t) => (
-              <div
-                key={t.id}
-                onClick={() => selectTick(t.id)}
-                className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}
-              >
-                <span className="text-zinc-300 w-16">{`U${Math.abs(t.distance)}`}</span>
+              <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+                <span className="text-zinc-300 w-14">{`U${Math.abs(t.distance)}`}</span>
                 <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); removeTick(t.id) }}
-                  className="text-red-500 hover:text-red-400 text-xs"
-                >×</button>
+                <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
               </div>
             ))}
-            {topTicks.length === 0 && (
-              <div className="text-zinc-600 text-xs py-1">暂无刻度</div>
-            )}
+            {topTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
           </div>
         </div>
       )}
 
-      {/* 下立柱刻度 */}
+      {/* 下立柱刻度 → */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-white font-semibold">下立柱刻度</h3>
-          <button onClick={handleAddBottom} className="btn-add">
-            + 添加
-          </button>
+          <h3 className="text-white font-semibold">下立柱 →</h3>
+          <button onClick={() => handleAdd('vertical', bottomRightTicks, 1)} className="btn-add">+ 添加</button>
         </div>
-        <div className="space-y-1 max-h-40 overflow-y-auto">
-          {bottomTicks.map((t) => (
-            <div
-              key={t.id}
-              onClick={() => selectTick(t.id)}
-              className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}
-            >
-              <span className="text-zinc-300 w-16">{`D${t.distance}`}</span>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {bottomRightTicks.map((t) => (
+            <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+              <span className="text-zinc-300 w-14">{`D${t.distance}`}</span>
               <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
-              <button
-                onClick={(e) => { e.stopPropagation(); removeTick(t.id) }}
-                className="text-red-500 hover:text-red-400 text-xs"
-              >×</button>
+              <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
             </div>
           ))}
-          {bottomTicks.length === 0 && (
-            <div className="text-zinc-600 text-xs py-1">暂无刻度</div>
-          )}
+          {bottomRightTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
+        </div>
+      </div>
+
+      {/* 下立柱刻度 ← */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-white font-semibold">下立柱 ←</h3>
+          <button onClick={() => handleAdd('vertical', bottomLeftTicks, -1)} className="btn-add">+ 添加</button>
+        </div>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {bottomLeftTicks.map((t) => (
+            <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+              <span className="text-zinc-300 w-14">{`D${t.distance}`}</span>
+              <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
+              <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
+            </div>
+          ))}
+          {bottomLeftTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
       </div>
     </div>

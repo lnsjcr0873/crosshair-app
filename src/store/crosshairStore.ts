@@ -23,7 +23,7 @@ interface CrosshairStore {
   setOverlayMode: (v: boolean) => void
   setSymmetricMode: (v: boolean) => void
 
-  addTick: (axis: 'horizontal' | 'vertical', distance: number) => void
+  addTick: (axis: 'horizontal' | 'vertical', distance: number, direction?: 1 | -1) => void
   removeTick: (id: string) => void
   updateTick: (id: string, partial: Partial<TickMark>) => void
   moveTick: (id: string, newDistance: number) => void
@@ -106,12 +106,12 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
 
     setSymmetricMode: (v) => set({ symmetricMode: v }),
 
-    addTick: (axis, distance) =>
+    addTick: (axis, distance, direction) =>
       set((s) => {
-        const tick = createTick(axis, distance)
+        const tick = createTick(axis, distance, direction)
         let allTicks = [...s.config.ticks, tick]
         if (s.symmetricMode && axis === 'vertical') {
-          const mirror = { ...createTick(axis, -distance), label: tick.label }
+          const mirror = { ...createTick(axis, -distance, direction), label: tick.label }
           allTicks = [...allTicks, mirror]
         }
         const newConfig = { ...s.config, ticks: allTicks }

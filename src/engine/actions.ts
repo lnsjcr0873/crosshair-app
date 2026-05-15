@@ -34,8 +34,12 @@ export function generateSvg(config: CrosshairConfig): string {
   const tag = (name: string, attrs: Record<string, string | number>) =>
     `<${name} ${Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ')}${name === 'text' ? '' : '/'}>`
 
-  lines.push(tag('line', { x1: 0, y1: cy, x2: cx - gap, y2: cy, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
-  lines.push(tag('line', { x1: cx + gap, y1: cy, x2: w, y2: cy, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
+  if (config.showLeftLine) {
+    lines.push(tag('line', { x1: 0, y1: cy, x2: cx - gap, y2: cy, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
+  }
+  if (config.showRightLine) {
+    lines.push(tag('line', { x1: cx + gap, y1: cy, x2: w, y2: cy, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
+  }
   lines.push(tag('line', { x1: cx, y1: cy + gap, x2: cx, y2: h, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
   if (config.showTopPost) {
     lines.push(tag('line', { x1: cx, y1: cy - gap, x2: cx, y2: cy - config.topPostLength, stroke: esc(clr), 'stroke-width': config.mainLineWidth, opacity }))
@@ -43,18 +47,21 @@ export function generateSvg(config: CrosshairConfig): string {
   for (const tick of config.ticks) {
     if (!tick.visible) continue
     if (tick.axis === 'vertical' && tick.distance < 0 && !config.showTopPost) continue
+    if (tick.axis === 'horizontal' && tick.distance < 0 && !config.showLeftTicks) continue
+    if (tick.axis === 'horizontal' && tick.distance > 0 && !config.showRightTicks) continue
+    const dir = tick.direction ?? (tick.axis === 'horizontal' ? -1 : 1)
     const x1 = tick.axis === 'horizontal' ? cx + tick.distance : cx
     const y1 = tick.axis === 'horizontal' ? cy : cy + tick.distance
-    const x2 = tick.axis === 'horizontal' ? cx + tick.distance : cx + tick.lineLength
-    const y2 = tick.axis === 'horizontal' ? cy - tick.lineLength : cy + tick.distance
+    const x2 = tick.axis === 'horizontal' ? cx + tick.distance : cx + dir * tick.lineLength
+    const y2 = tick.axis === 'horizontal' ? cy + dir * tick.lineLength : cy + tick.distance
     lines.push(tag('line', { x1, y1, x2, y2, stroke: esc(tick.color), 'stroke-width': tick.lineWidth, opacity }))
     if (tick.label) {
       let lx: number, ly: number
       if (tick.axis === 'horizontal') {
         lx = cx + tick.distance
-        ly = cy - tick.lineLength - tick.fontSize / 2 - 4
+        ly = cy + dir * (tick.lineLength + tick.fontSize / 2 + 4)
       } else {
-        lx = cx + tick.lineLength + tick.fontSize * 0.3 + 4
+        lx = cx + dir * (tick.lineLength + tick.fontSize * 0.3 + 4)
         ly = cy + tick.distance
       }
       lines.push(`<text x="${lx + tick.labelOffsetX}" y="${ly + tick.labelOffsetY}" fill="${esc(tick.color)}" font-size="${tick.fontSize}" font-family="monospace" text-anchor="middle" dominant-baseline="central">${esc(tick.label)}</text>`)

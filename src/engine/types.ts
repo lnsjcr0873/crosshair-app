@@ -2,6 +2,7 @@ export interface TickMark {
   id: string
   axis: 'horizontal' | 'vertical'
   distance: number
+  direction: 1 | -1
   lineLength: number
   lineWidth: number
   color: string
@@ -24,6 +25,10 @@ export interface CrosshairConfig {
   verticalLineLength: number
   showTopPost: boolean
   topPostLength: number
+  showLeftLine: boolean
+  showRightLine: boolean
+  showLeftTicks: boolean
+  showRightTicks: boolean
   ticks: TickMark[]
 }
 
@@ -40,6 +45,10 @@ export function createDefaultConfig(): CrosshairConfig {
     verticalLineLength: 300,
     showTopPost: false,
     topPostLength: 300,
+    showLeftLine: true,
+    showRightLine: true,
+    showLeftTicks: true,
+    showRightTicks: true,
     ticks: [],
   }
 }
@@ -48,11 +57,12 @@ export function generateId(): string {
   return Math.random().toString(36).substring(2, 9)
 }
 
-export function createTick(axis: 'horizontal' | 'vertical', distance: number): TickMark {
+export function createTick(axis: 'horizontal' | 'vertical', distance: number, direction?: 1 | -1): TickMark {
   return {
     id: generateId(),
     axis,
     distance,
+    direction: direction ?? (axis === 'horizontal' ? -1 : 1),
     lineLength: 12,
     lineWidth: 2,
     color: '#00ff00',

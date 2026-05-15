@@ -1,6 +1,10 @@
 import { isTauri } from '../engine/tauri'
+import { useCrosshairStore } from '../store/crosshairStore'
 
 export default function TitleBar() {
+  const overlayMode = useCrosshairStore((s) => s.overlayMode)
+  if (overlayMode) return null
+
   const handleMinimize = async () => {
     if (!isTauri()) return
     const { getCurrentWindow } = await import('@tauri-apps/api/window')

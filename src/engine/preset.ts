@@ -13,6 +13,10 @@ function createPreset(name: string, ticks: TickMark[]): CrosshairConfig {
     verticalLineLength: 300,
     showTopPost: false,
     topPostLength: 300,
+    showLeftLine: true,
+    showRightLine: true,
+    showLeftTicks: true,
+    showRightTicks: true,
     ticks,
   }
 }
