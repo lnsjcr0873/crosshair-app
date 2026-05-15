@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useCrosshairStore } from '../store/crosshairStore'
+import BatchAddDialog from './BatchAddDialog'
 
 const MAX_DIST = 1000
 
@@ -7,9 +8,13 @@ export default function TickList() {
   const config = useCrosshairStore((s) => s.config)
   const updateConfig = useCrosshairStore((s) => s.updateConfig)
   const selectedTickId = useCrosshairStore((s) => s.selectedTickId)
+  const selectedTickIds = useCrosshairStore((s) => s.selectedTickIds)
   const selectTick = useCrosshairStore((s) => s.selectTick)
+  const toggleTickSelection = useCrosshairStore((s) => s.toggleTickSelection)
+  const clearSelection = useCrosshairStore((s) => s.clearSelection)
   const addTick = useCrosshairStore((s) => s.addTick)
   const removeTick = useCrosshairStore((s) => s.removeTick)
+  const removeTicks = useCrosshairStore((s) => s.removeTicks)
 
   const configList = useCrosshairStore((s) => s.configList)
   const activeIndex = useCrosshairStore((s) => s.activeIndex)
@@ -20,7 +25,7 @@ export default function TickList() {
 
   const [renaming, setRenaming] = useState(false)
   const [nameBuf, setNameBuf] = useState('')
-  const [showNewOpts, setShowNewOpts] = useState(false)
+  const [batchAxis, setBatchAxis] = useState<'horizontal' | 'vertical' | null>(null)
 
   const hUpTicks = config.ticks.filter((t) => t.axis === 'horizontal' && (t.direction ?? -1) === -1)
   const hDownTicks = config.ticks.filter((t) => t.axis === 'horizontal' && (t.direction ?? -1) === 1)
@@ -35,6 +40,16 @@ export default function TickList() {
     addTick(axis, dist, direction)
   }
 
+  const handleTickClick = (e: React.MouseEvent, id: string) => {
+    if (e.ctrlKey || e.metaKey) {
+      toggleTickSelection(id)
+    } else {
+      selectTick(id)
+    }
+  }
+
+  const tickClass = (id: string) => `tick-item ${selectedTickIds.has(id) ? 'tick-item-active' : ''}`
+
   const startRename = () => {
     setNameBuf(configList[activeIndex]?.name || '')
     setRenaming(true)
@@ -44,7 +59,7 @@ export default function TickList() {
     setRenaming(false)
   }
 
-  return (
+  return (<>
     <div className="p-4 space-y-4 text-sm">
       {/* 配置管理 */}
       <div>
@@ -111,11 +126,14 @@ export default function TickList() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold">水平刻度 ↑</h3>
-          <button onClick={() => handleAdd('horizontal', hUpTicks, -1)} className="btn-add">+ 添加</button>
+          <div className="flex gap-1">
+            <button onClick={() => handleAdd('horizontal', hUpTicks, -1)} className="btn-add">+ 添加</button>
+            <button onClick={() => setBatchAxis('horizontal')} className="btn-icon text-xs px-1" title="批量添加">⋮</button>
+          </div>
         </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
           {hUpTicks.map((t) => (
-            <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+            <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
               <span className="text-zinc-300 w-14">{t.distance > 0 ? `R${t.distance}` : `L${Math.abs(t.distance)}`}</span>
               <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
               <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
@@ -129,11 +147,13 @@ export default function TickList() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold">水平刻度 ↓</h3>
-          <button onClick={() => handleAdd('horizontal', hDownTicks, 1)} className="btn-add">+ 添加</button>
+          <div className="flex gap-1">
+            <button onClick={() => handleAdd('horizontal', hDownTicks, 1)} className="btn-add">+ 添加</button>
+          </div>
         </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
           {hDownTicks.map((t) => (
-            <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+            <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
               <span className="text-zinc-300 w-14">{t.distance > 0 ? `R${t.distance}` : `L${Math.abs(t.distance)}`}</span>
               <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
               <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
@@ -148,11 +168,13 @@ export default function TickList() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-white font-semibold">上立柱</h3>
-            <button onClick={() => handleAdd('vertical', topTicks, 1)} className="btn-add">+ 添加</button>
+            <div className="flex gap-1">
+              <button onClick={() => handleAdd('vertical', topTicks, 1)} className="btn-add">+ 添加</button>
+            </div>
           </div>
           <div className="space-y-1 max-h-32 overflow-y-auto">
             {topTicks.map((t) => (
-              <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+              <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
                 <span className="text-zinc-300 w-14">{`U${Math.abs(t.distance)}`}</span>
                 <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
                 <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
@@ -168,11 +190,14 @@ export default function TickList() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold">下立柱 →</h3>
-          <button onClick={() => handleAdd('vertical', bottomRightTicks, 1)} className="btn-add">+ 添加</button>
+          <div className="flex gap-1">
+            <button onClick={() => handleAdd('vertical', bottomRightTicks, 1)} className="btn-add">+ 添加</button>
+            <button onClick={() => setBatchAxis('vertical')} className="btn-icon text-xs px-1" title="批量添加">⋮</button>
+          </div>
         </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
           {bottomRightTicks.map((t) => (
-            <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+            <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
               <span className="text-zinc-300 w-14">{`D${t.distance}`}</span>
               <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
               <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
@@ -188,11 +213,13 @@ export default function TickList() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-white font-semibold">下立柱 ←</h3>
-          <button onClick={() => handleAdd('vertical', bottomLeftTicks, -1)} className="btn-add">+ 添加</button>
+          <div className="flex gap-1">
+            <button onClick={() => handleAdd('vertical', bottomLeftTicks, -1)} className="btn-add">+ 添加</button>
+          </div>
         </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
           {bottomLeftTicks.map((t) => (
-            <div key={t.id} onClick={() => selectTick(t.id)} className={`tick-item ${selectedTickId === t.id ? 'tick-item-active' : ''}`}>
+            <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
               <span className="text-zinc-300 w-14">{`D${t.distance}`}</span>
               <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
               <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
@@ -202,6 +229,14 @@ export default function TickList() {
         </div>
       </div>
       )}
+      {selectedTickIds.size > 1 && (
+        <div className="flex items-center gap-2 pt-1 border-t border-zinc-700">
+          <span className="text-zinc-400 text-xs">{selectedTickIds.size} 个已选中</span>
+          <button onClick={() => removeTicks([...selectedTickIds])} className="btn-danger text-xs">删除选中</button>
+          <button onClick={clearSelection} className="btn-secondary text-xs">取消选择</button>
+        </div>
+      )}
     </div>
-  )
+    {batchAxis && <BatchAddDialog axis={batchAxis} onClose={() => setBatchAxis(null)} />}
+  </>)
 }

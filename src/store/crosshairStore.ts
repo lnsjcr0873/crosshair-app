@@ -10,6 +10,7 @@ interface HistoryEntry {
 interface CrosshairStore {
   config: CrosshairConfig
   selectedTickId: string | null
+  selectedTickIds: Set<string>
   scale: number
   overlayMode: boolean
   symmetricMode: boolean
@@ -22,15 +23,20 @@ interface CrosshairStore {
   setConfig: (config: CrosshairConfig) => void
   updateConfig: (partial: Partial<CrosshairConfig>) => void
   selectTick: (id: string | null) => void
+  toggleTickSelection: (id: string) => void
+  clearSelection: () => void
   setScale: (s: number) => void
   setOverlayMode: (v: boolean) => void
   setSymmetricMode: (v: boolean) => void
 
   addTick: (axis: 'horizontal' | 'vertical', distance: number, direction?: 1 | -1) => void
+  addTicks: (ticks: { axis: 'horizontal' | 'vertical'; distance: number; direction?: 1 | -1; label?: string }[], symmetric?: boolean) => void
   removeTick: (id: string) => void
+  removeTicks: (ids: string[]) => void
   updateTick: (id: string, partial: Partial<TickMark>) => void
   moveTick: (id: string, newDistance: number) => void
   duplicateTick: (id: string) => void
+  batchUpdateTicks: (ids: string[], partial: Partial<TickMark>) => void
   loadPreset: (config: CrosshairConfig) => void
 
   undo: () => void
@@ -88,6 +94,7 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
   return {
     config: initial,
     selectedTickId: null,
+    selectedTickIds: new Set(),
     scale: 1,
     overlayMode: false,
     symmetricMode: true,
@@ -111,7 +118,16 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
         }
       }),
 
-    selectTick: (id) => set({ selectedTickId: id }),
+    selectTick: (id) => set({ selectedTickId: id, selectedTickIds: id ? new Set([id]) : new Set() }),
+
+    toggleTickSelection: (id) =>
+      set((s) => {
+        const next = new Set(s.selectedTickIds)
+        if (next.has(id)) next.delete(id); else next.add(id)
+        return { selectedTickIds: next, selectedTickId: next.size === 1 ? next.values().next().value : null }
+      }),
+
+    clearSelection: () => set({ selectedTickIds: new Set(), selectedTickId: null }),
 
     setScale: (scale) => set({ scale }),
 
@@ -129,7 +145,32 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
         }
         const newConfig = { ...s.config, ticks: allTicks }
         const { history, historyIndex, config } = pushHistory(s.history, s.historyIndex, newConfig)
-        return { history, historyIndex, config: config, selectedTickId: tick.id, configList: syncListEntry(s, config) }
+        return { history, historyIndex, config: config, selectedTickId: tick.id, selectedTickIds: new Set([tick.id]), configList: syncListEntry(s, config) }
+      }),
+
+    addTicks: (ticks, symmetric) =>
+      set((s) => {
+        const created: TickMark[] = []
+        for (const t of ticks) {
+          const tick = createTick(t.axis, t.distance, t.direction)
+          if (t.label) tick.label = t.label
+          created.push(tick)
+          if (symmetric && t.axis === 'horizontal') {
+            const m = createTick(t.axis, -t.distance, t.direction)
+            if (t.label) m.label = t.label
+            created.push(m)
+          }
+          if (symmetric && t.axis === 'vertical') {
+            const m = createTick(t.axis, -t.distance, t.direction)
+            if (t.label) m.label = t.label
+            created.push(m)
+          }
+        }
+        const allTicks = [...s.config.ticks, ...created]
+        const newConfig = { ...s.config, ticks: allTicks }
+        const { history, historyIndex, config } = pushHistory(s.history, s.historyIndex, newConfig)
+        const firstId = created[0]?.id ?? null
+        return { history, historyIndex, config, selectedTickId: firstId, selectedTickIds: firstId ? new Set([firstId]) : new Set(), configList: syncListEntry(s, config) }
       }),
 
     removeTick: (id) =>
@@ -140,6 +181,21 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
         return {
           ...result,
           selectedTickId: s.selectedTickId === id ? null : s.selectedTickId,
+          selectedTickIds: s.selectedTickIds.has(id) ? new Set([...s.selectedTickIds].filter(x => x !== id)) : s.selectedTickIds,
+          configList: syncListEntry(s, result.config),
+        }
+      }),
+
+    removeTicks: (ids) =>
+      set((s) => {
+        const idSet = new Set(ids)
+        const ticks = s.config.ticks.filter((t) => !idSet.has(t.id))
+        const newConfig = { ...s.config, ticks }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return {
+          ...result,
+          selectedTickId: null,
+          selectedTickIds: new Set(),
           configList: syncListEntry(s, result.config),
         }
       }),
@@ -147,6 +203,15 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     updateTick: (id, partial) =>
       set((s) => {
         const ticks = updateTicks(s.config.ticks, id, partial, s.symmetricMode)
+        const newConfig = { ...s.config, ticks }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config) }
+      }),
+
+    batchUpdateTicks: (ids, partial) =>
+      set((s) => {
+        const idSet = new Set(ids)
+        const ticks = s.config.ticks.map((t) => idSet.has(t.id) ? { ...t, ...partial } : t)
         const newConfig = { ...s.config, ticks }
         const result = pushHistory(s.history, s.historyIndex, newConfig)
         return { ...result, configList: syncListEntry(s, result.config) }
