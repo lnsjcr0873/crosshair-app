@@ -36,6 +36,7 @@ export async function setOverlayWindow(enabled: boolean): Promise<void> {
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
     const w = getCurrentWindow()
     if (enabled) {
+      await w.setDecorations(false)
       await w.setAlwaysOnTop(true)
       await w.setFullscreen(true)
       await w.setIgnoreCursorEvents(true)

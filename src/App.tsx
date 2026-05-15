@@ -74,6 +74,24 @@ export default function App() {
 
   useEffect(() => { setOverlayWindow(overlayMode) }, [overlayMode])
 
+  // overlay focus loss guard: when mouse passes through to game,
+  // Windows may reset fullscreen/decorations; restore them instantly
+  useEffect(() => {
+    if (!overlayMode || !isTauri()) return
+    let unlisten: (() => void) | undefined
+    ;(async () => {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window')
+      const w = getCurrentWindow()
+      unlisten = await w.onFocusChanged(({ payload: focused }) => {
+        if (!focused) {
+          w.setDecorations(false)
+          w.setFullscreen(true)
+        }
+      })
+    })()
+    return () => { unlisten?.() }
+  }, [overlayMode])
+
   // global shortcuts for overlay mode (build from hotkeys)
   useEffect(() => {
     if (!isTauri()) return

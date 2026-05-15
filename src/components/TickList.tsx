@@ -107,15 +107,6 @@ export default function TickList() {
         </label>
       </div>
 
-      {/* 上柱长度 */}
-      {config.showTopLine && (
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <span>上柱长</span>
-          <input type="range" min={60} max={400} value={config.topPostLength} onChange={(e) => updateConfig({ topPostLength: Number(e.target.value) })} className="flex-1" />
-          <span className="text-zinc-500 w-6">{config.topPostLength}</span>
-        </div>
-      )}
-
       {/* 水平刻度 ↑ */}
       <div>
         <div className="flex items-center justify-between mb-2">

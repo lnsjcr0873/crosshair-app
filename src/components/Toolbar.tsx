@@ -163,17 +163,6 @@ export default function Toolbar() {
         对称 {symmetricMode ? 'ON' : 'OFF'}
       </button>
 
-      <div className="flex items-center gap-1.5 text-xs ml-1">
-        <label className="flex items-center gap-0.5 text-zinc-400 cursor-pointer"><input type="checkbox" className="w-2.5 h-2.5" checked={config.showTopLine} onChange={() => updateConfig({ showTopLine: !config.showTopLine })} />上线</label>
-        <label className="flex items-center gap-0.5 text-zinc-400 cursor-pointer"><input type="checkbox" className="w-2.5 h-2.5" checked={config.showTopTicks} onChange={() => updateConfig({ showTopTicks: !config.showTopTicks })} />上刻</label>
-        <label className="flex items-center gap-0.5 text-zinc-400 cursor-pointer"><input type="checkbox" className="w-2.5 h-2.5" checked={config.showBottomLine} onChange={() => updateConfig({ showBottomLine: !config.showBottomLine })} />下线</label>
-        <label className="flex items-center gap-0.5 text-zinc-400 cursor-pointer"><input type="checkbox" className="w-2.5 h-2.5" checked={config.showBottomTicks} onChange={() => updateConfig({ showBottomTicks: !config.showBottomTicks })} />下刻</label>
-        <label className="flex items-center gap-0.5 text-zinc-400 cursor-pointer"><input type="checkbox" className="w-2.5 h-2.5" checked={config.showLeftLine} onChange={() => updateConfig({ showLeftLine: !config.showLeftLine })} />左线</label>
-        <label className="flex items-center gap-0.5 text-zinc-400 cursor-pointer"><input type="checkbox" className="w-2.5 h-2.5" checked={config.showRightLine} onChange={() => updateConfig({ showRightLine: !config.showRightLine })} />右线</label>
-        <label className="flex items-center gap-0.5 text-zinc-400 cursor-pointer"><input type="checkbox" className="w-2.5 h-2.5" checked={config.showLeftTicks} onChange={() => updateConfig({ showLeftTicks: !config.showLeftTicks })} />左刻</label>
-        <label className="flex items-center gap-0.5 text-zinc-400 cursor-pointer"><input type="checkbox" className="w-2.5 h-2.5" checked={config.showRightTicks} onChange={() => updateConfig({ showRightTicks: !config.showRightTicks })} />右刻</label>
-      </div>
-
       <div className="w-px h-5 bg-zinc-600 mx-1" />
 
       <button onClick={handleExportPng} className="btn-primary text-xs">
