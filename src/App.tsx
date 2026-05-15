@@ -74,23 +74,23 @@ export default function App() {
       const ctrl = e.ctrlKey || e.metaKey
       const st = useCrosshairStore.getState()
 
-      if (ctrl && e.key === 'z') {
+      if (ctrl && (e.code === 'KeyZ' || e.key === 'z')) {
         if (e.shiftKey) { e.preventDefault(); st.redo() }
         else { e.preventDefault(); st.undo() }
         return
       }
-      if (ctrl && e.key === 'y') { e.preventDefault(); st.redo(); return }
-      if (ctrl && e.key === 's') { e.preventDefault(); savePreset(st.config); return }
-      if (ctrl && e.key === 'e') { e.preventDefault(); exportPng(st.config); return }
-      if (ctrl && e.shiftKey && e.key === '2') { e.preventDefault(); st.setOverlayMode(!st.overlayMode); return }
-      if (ctrl && e.shiftKey && e.key === 'H') { e.preventDefault(); st.updateConfig({ mainAlpha: st.config.mainAlpha > 0 ? 0 : 1 }); return }
+      if (ctrl && (e.code === 'KeyY' || e.key === 'y')) { e.preventDefault(); st.redo(); return }
+      if (ctrl && (e.code === 'KeyS' || e.key === 's')) { e.preventDefault(); savePreset(st.config); return }
+      if (ctrl && (e.code === 'KeyE' || e.key === 'e')) { e.preventDefault(); exportPng(st.config); return }
+      if (ctrl && e.shiftKey && e.code === 'Digit2') { e.preventDefault(); st.setOverlayMode(!st.overlayMode); return }
+      if (ctrl && e.shiftKey && e.code === 'KeyH') { e.preventDefault(); st.updateConfig({ mainAlpha: st.config.mainAlpha > 0 ? 0 : 1 }); return }
 
       if (!st.overlayMode) return
 
       // overlay keyboard shortcuts (fallback when not in Tauri)
       if (isTauri()) return // Tauri uses global shortcuts, skip here
       const tick = st.selectedTickId ? st.config.ticks.find((t) => t.id === st.selectedTickId) : null
-      if (e.key === 'PageUp') {
+      if (e.code === 'PageUp') {
         e.preventDefault()
         const sorted = [...st.config.ticks].sort((a, b) => a.distance - b.distance)
         if (sorted.length === 0) return
@@ -98,7 +98,7 @@ export default function App() {
         st.selectTick(idx < sorted.length - 1 ? sorted[idx + 1].id : sorted[0].id)
         return
       }
-      if (e.key === 'PageDown') {
+      if (e.code === 'PageDown') {
         e.preventDefault()
         const sorted = [...st.config.ticks].sort((a, b) => b.distance - a.distance)
         if (sorted.length === 0) return
@@ -107,10 +107,10 @@ export default function App() {
         return
       }
       if (!tick) return
-      if (e.key === 'ArrowDown') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance - 1); return }
-      if (e.key === 'ArrowUp') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance + 1); return }
-      if (e.key === '[') { e.preventDefault(); st.updateTick(st.selectedTickId!, { lineLength: Math.max(2, tick.lineLength - 1) }); return }
-      if (e.key === ']') { e.preventDefault(); st.updateTick(st.selectedTickId!, { lineLength: Math.min(80, tick.lineLength + 1) }); return }
+      if (e.code === 'ArrowDown') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance - 1); return }
+      if (e.code === 'ArrowUp') { e.preventDefault(); st.moveTick(st.selectedTickId!, tick.distance + 1); return }
+      if (e.code === 'BracketLeft') { e.preventDefault(); st.updateTick(st.selectedTickId!, { lineLength: Math.max(2, tick.lineLength - 1) }); return }
+      if (e.code === 'BracketRight') { e.preventDefault(); st.updateTick(st.selectedTickId!, { lineLength: Math.min(80, tick.lineLength + 1) }); return }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
