@@ -1,6 +1,16 @@
 import type { CrosshairConfig, TickMark } from './types'
 
 const SELECTED_COLOR = '#ff4444'
+const imageCache = new Map<string, HTMLImageElement>()
+
+function getRefImage(dataUrl: string): HTMLImageElement | null {
+  const cached = imageCache.get(dataUrl)
+  if (cached) return cached
+  const img = new Image()
+  img.src = dataUrl
+  imageCache.set(dataUrl, img)
+  return img
+}
 
 export function renderCrosshair(
   ctx: CanvasRenderingContext2D,
@@ -21,6 +31,20 @@ export function renderCrosshair(
     ctx.fillStyle = config.bgColor
     ctx.fillRect(0, 0, width, height)
     ctx.globalAlpha = 1
+  }
+
+  // reference image
+  const ref = config.referenceImage
+  if (ref?.dataUrl) {
+    const img = getRefImage(ref.dataUrl)
+    if (img && img.complete && img.naturalWidth > 0) {
+      ctx.save()
+      ctx.globalAlpha = ref.opacity
+      ctx.translate(cx + ref.offsetX, cy + ref.offsetY)
+      ctx.scale(ref.scale, ref.scale)
+      ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2)
+      ctx.restore()
+    }
   }
 
   // main content (uses mainAlpha)

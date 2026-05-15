@@ -13,6 +13,14 @@ export interface TickMark {
   visible: boolean
 }
 
+export interface ReferenceImage {
+  dataUrl: string
+  opacity: number
+  scale: number
+  offsetX: number
+  offsetY: number
+}
+
 export interface CrosshairConfig {
   name: string
   centerGap: number
@@ -32,6 +40,7 @@ export interface CrosshairConfig {
   showRightLine: boolean
   showLeftTicks: boolean
   showRightTicks: boolean
+  referenceImage?: ReferenceImage
   ticks: TickMark[]
 }
 

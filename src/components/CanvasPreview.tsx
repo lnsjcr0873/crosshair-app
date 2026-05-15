@@ -11,7 +11,9 @@ export default function CanvasPreview() {
   const overlayMode = useCrosshairStore((s) => s.overlayMode)
   const selectTick = useCrosshairStore((s) => s.selectTick)
   const moveTick = useCrosshairStore((s) => s.moveTick)
+  const updateConfig = useCrosshairStore((s) => s.updateConfig)
   const draggingRef = useRef<{ id: string; startX: number; startY: number; origDist: number } | null>(null)
+  const refDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
 
   // draw
   useEffect(() => {
@@ -53,9 +55,17 @@ export default function CanvasPreview() {
     [config.ticks, scale, selectTick],
   )
 
-  // mouse drag to move tick
+  // mouse drag to move tick or pan reference image
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if ((e.ctrlKey || e.metaKey) && config.referenceImage?.dataUrl) {
+        refDragRef.current = {
+          startX: e.clientX, startY: e.clientY,
+          origX: config.referenceImage.offsetX,
+          origY: config.referenceImage.offsetY,
+        }
+        return
+      }
       const canvas = canvasRef.current
       if (!canvas) return
       const rect = canvas.getBoundingClientRect()
@@ -72,11 +82,21 @@ export default function CanvasPreview() {
         }
       }
     },
-    [config.ticks, scale, selectTick],
+    [config.ticks, scale, selectTick, config.referenceImage],
   )
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (refDragRef.current) {
+        const ref = config.referenceImage
+        if (!ref) return
+        const dx = e.clientX - refDragRef.current.startX
+        const dy = e.clientY - refDragRef.current.startY
+        updateConfig({
+          referenceImage: { ...ref, offsetX: refDragRef.current.origX + dx, offsetY: refDragRef.current.origY + dy },
+        })
+        return
+      }
       if (!draggingRef.current) return
       const d = draggingRef.current
       const tick = config.ticks.find((t) => t.id === d.id)
@@ -104,6 +124,7 @@ export default function CanvasPreview() {
 
   const handleMouseUp = useCallback(() => {
     draggingRef.current = null
+    refDragRef.current = null
   }, [])
 
   const scrollState = useRef({ step: 1, acc: 0, timer: 0 })
@@ -142,8 +163,44 @@ export default function CanvasPreview() {
     }
   }, [])
 
+  // paste image from clipboard
+  useEffect(() => {
+    const handler = async (e: ClipboardEvent) => {
+      const file = e.clipboardData?.files[0]
+      if (file?.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onload = () => {
+          const st = useCrosshairStore.getState()
+          st.updateConfig({
+            referenceImage: { dataUrl: reader.result as string, opacity: 0.4, scale: 1, offsetX: 0, offsetY: 0 },
+          })
+        }
+        reader.readAsDataURL(file)
+      }
+    }
+    window.addEventListener('paste', handler)
+    return () => window.removeEventListener('paste', handler)
+  }, [])
+
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault() }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    const file = e.dataTransfer.files[0]
+    if (!file?.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const st = useCrosshairStore.getState()
+      st.updateConfig({
+        referenceImage: { dataUrl: reader.result as string, opacity: 0.4, scale: 1, offsetX: 0, offsetY: 0 },
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
   return (
-    <div ref={containerRef} className={`flex-1 relative ${overlayMode ? 'bg-transparent' : 'bg-zinc-900'} overflow-hidden`}>
+    <div ref={containerRef} className={`flex-1 relative ${overlayMode ? 'bg-transparent' : 'bg-zinc-900'} overflow-hidden`}
+      onDragOver={handleDragOver} onDrop={handleDrop}>
       <canvas
         ref={canvasRef}
         className="absolute inset-0 cursor-crosshair"

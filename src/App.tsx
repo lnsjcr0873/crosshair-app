@@ -1,6 +1,7 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import TitleBar from './components/TitleBar'
 import Toolbar from './components/Toolbar'
+import CalibrationPanel from './components/CalibrationPanel'
 import CanvasPreview from './components/CanvasPreview'
 import TickList from './components/TickList'
 import TickPropertyPanel from './components/TickPropertyPanel'
@@ -258,6 +259,7 @@ export default function App() {
         <>
           <TitleBar />
           <Toolbar />
+          <CalibrationPanel />
           <div className="flex flex-1 overflow-hidden">
             <div className="w-56 bg-zinc-800 border-r border-zinc-700 overflow-y-auto flex flex-col">
               <TickList />
