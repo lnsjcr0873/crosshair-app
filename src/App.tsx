@@ -78,6 +78,15 @@ export default function App() {
   // Windows may reset fullscreen/decorations; restore them instantly
   useEffect(() => {
     if (!overlayMode || !isTauri()) return
+
+    const restore = async () => {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window')
+      const w = getCurrentWindow()
+      await w.setDecorations(false)
+      await w.setFullscreen(true)
+    }
+
+    // immediate recovery on focus change
     let unlisten: (() => void) | undefined
     ;(async () => {
       const { getCurrentWindow } = await import('@tauri-apps/api/window')
@@ -89,7 +98,19 @@ export default function App() {
         }
       })
     })()
-    return () => { unlisten?.() }
+
+    // browser-level blur fallback
+    const onBlur = () => restore()
+    window.addEventListener('blur', onBlur)
+
+    // periodic safety net (every 5s) to catch edge cases
+    const interval = setInterval(restore, 5000)
+
+    return () => {
+      unlisten?.()
+      window.removeEventListener('blur', onBlur)
+      clearInterval(interval)
+    }
   }, [overlayMode])
 
   // global shortcuts for overlay mode (build from hotkeys)

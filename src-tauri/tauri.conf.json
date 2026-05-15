@@ -15,11 +15,11 @@
         "title": "准星刻度绘制",
         "width": 1200,
         "height": 800,
-        "minWidth": 900,
-        "minHeight": 600,
         "decorations": false,
         "transparent": true,
-        "alwaysOnTop": false
+        "alwaysOnTop": false,
+        "shadow": false,
+        "skipTaskbar": true
       }
     ]
   },
