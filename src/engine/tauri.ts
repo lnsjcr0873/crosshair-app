@@ -95,8 +95,13 @@ export async function unregisterShortcut(shortcut: string): Promise<void> {
 // State persistence (uses BaseDirectory.AppData = %APPDATA%\com.crosshair.app\)
 export async function saveAppState(data: string): Promise<void> {
   if (!isTauri()) return
-  const { writeTextFile, BaseDirectory } = await import('@tauri-apps/plugin-fs')
-  await writeTextFile('state.json', data, { baseDir: BaseDirectory.AppData })
+  try {
+    const { writeTextFile, mkdir, BaseDirectory } = await import('@tauri-apps/plugin-fs')
+    await mkdir('.', { baseDir: BaseDirectory.AppData, recursive: true }).catch(() => {})
+    await writeTextFile('state.json', data, { baseDir: BaseDirectory.AppData })
+  } catch (e) {
+    console.error('saveAppState failed:', e)
+  }
 }
 
 export async function loadAppState(): Promise<string | null> {
@@ -104,7 +109,8 @@ export async function loadAppState(): Promise<string | null> {
   try {
     const { readTextFile, BaseDirectory } = await import('@tauri-apps/plugin-fs')
     return await readTextFile('state.json', { baseDir: BaseDirectory.AppData })
-  } catch {
+  } catch (e) {
+    console.error('loadAppState failed:', e)
     return null
   }
 }
