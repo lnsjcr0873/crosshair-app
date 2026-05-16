@@ -8,13 +8,13 @@ export default function TitleBar() {
   const handleMinimize = async () => {
     if (!isTauri()) return
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().minimize()
+    await getCurrentWindow().hide()
   }
 
   const handleClose = async () => {
     if (!isTauri()) return
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    await getCurrentWindow().close()
+    await getCurrentWindow().hide() // Rust on_window_event also hides + prevents_close
   }
 
   return (

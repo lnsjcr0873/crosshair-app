@@ -7,7 +7,7 @@ import TickList from './components/TickList'
 import TickPropertyPanel from './components/TickPropertyPanel'
 import { useCrosshairStore } from './store/crosshairStore'
 import { exportPng, savePreset } from './engine/actions'
-import { isTauri, setOverlayWindow, registerShortcut, registerRepeatShortcut, clearArrowRepeat } from './engine/tauri'
+import { isTauri, setOverlayWindow, registerShortcut, registerRepeatShortcut, clearArrowRepeat, saveAppState, loadAppState } from './engine/tauri'
 
 function visibleTicks(st: any) {
   return st.config.ticks.filter((t: any) => {
@@ -83,9 +83,51 @@ function hotkeyToCode(hk: string): string {
 export default function App() {
   const overlayMode = useCrosshairStore((s) => s.overlayMode)
   const hotkeys = useCrosshairStore((s) => s.hotkeys)
+  const configList = useCrosshairStore((s) => s.configList)
   const arrowCount = useRef<Record<string, number>>({})
 
   useEffect(() => { setOverlayWindow(overlayMode) }, [overlayMode])
+
+  // Auto-load state from disk on startup
+  useEffect(() => {
+    if (!isTauri()) return
+    ;(async () => {
+      const data = await loadAppState()
+      if (!data) return
+      try {
+        const saved = JSON.parse(data)
+        if (!saved.configList?.length) return
+        const cfg = saved.configList[saved.activeIndex || 0]?.config
+        if (!cfg) return
+        useCrosshairStore.setState({
+          configList: saved.configList,
+          activeIndex: saved.activeIndex || 0,
+          config: cfg,
+          hotkeys: { ...useCrosshairStore.getState().hotkeys, ...(saved.hotkeys || {}) },
+          history: [{ config: structuredClone(cfg) }],
+          historyIndex: 0,
+          selectedTickId: null,
+          selectedTickIds: new Set(),
+        })
+      } catch (e) {
+        console.error('Failed to load saved state', e)
+      }
+    })()
+  }, [])
+
+  // Auto-save state to disk on changes (debounced 1s)
+  useEffect(() => {
+    if (!isTauri()) return
+    const timer = setTimeout(async () => {
+      const st = useCrosshairStore.getState()
+      await saveAppState(JSON.stringify({
+        configList: st.configList,
+        activeIndex: st.activeIndex,
+        hotkeys: st.hotkeys,
+      }))
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [configList, hotkeys])
 
   // overlay focus loss guard: when mouse passes through to game,
   // Windows may reset fullscreen/decorations; restore them instantly

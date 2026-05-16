@@ -91,3 +91,25 @@ export async function unregisterShortcut(shortcut: string): Promise<void> {
   const { unregister } = await import('@tauri-apps/plugin-global-shortcut')
   await unregister(shortcut)
 }
+
+// State persistence
+export async function getAppDataDir(): Promise<string> {
+  const { appDataDir } = await import('@tauri-apps/api/path')
+  return await appDataDir()
+}
+
+export async function saveAppState(data: string): Promise<void> {
+  if (!isTauri()) return
+  const dir = await getAppDataDir()
+  await writeTextFile(dir + 'state.json', data)
+}
+
+export async function loadAppState(): Promise<string | null> {
+  if (!isTauri()) return null
+  try {
+    const dir = await getAppDataDir()
+    return await readTextFile(dir + 'state.json')
+  } catch {
+    return null
+  }
+}
