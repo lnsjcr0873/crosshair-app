@@ -20,8 +20,13 @@ pub fn run() {
                 .item(&quit)
                 .build()?;
 
+            let icon_bytes = include_bytes!("../icons/32x32.png");
+            let img = image::load_from_memory(icon_bytes).unwrap().into_rgba8();
+            let (w, h) = img.dimensions();
+            let icon = tauri::image::Image::new_owned(img.into_raw(), w, h);
+
             TrayIconBuilder::new()
-                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png")).unwrap())
+                .icon(icon)
                 .tooltip("准星刻度绘制")
                 .menu(&menu)
                 .on_menu_event(|app, event| {
