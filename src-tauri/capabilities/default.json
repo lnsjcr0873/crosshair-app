@@ -20,6 +20,7 @@
     "fs:default",
     "fs:allow-write-text-file",
     "fs:allow-read-text-file",
+    { "identifier": "fs:scope", "allow": [{ "path": "$APPDATA/state.json" }] },
     "global-shortcut:default",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",

@@ -21,7 +21,7 @@ pub fn run() {
                 .build()?;
 
             TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png")).unwrap())
                 .tooltip("准星刻度绘制")
                 .menu(&menu)
                 .on_menu_event(|app, event| {
