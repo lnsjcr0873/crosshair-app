@@ -116,13 +116,9 @@ export default function App() {
     const onBlur = () => restore()
     window.addEventListener('blur', onBlur)
 
-    // periodic safety net (every 5s) to catch edge cases
-    const interval = setInterval(restore, 5000)
-
     return () => {
       unlisten?.()
       window.removeEventListener('blur', onBlur)
-      clearInterval(interval)
     }
   }, [overlayMode])
 
