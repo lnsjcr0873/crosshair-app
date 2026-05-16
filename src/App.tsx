@@ -82,6 +82,7 @@ function hotkeyToCode(hk: string): string {
 
 export default function App() {
   const overlayMode = useCrosshairStore((s) => s.overlayMode)
+  const hotkeys = useCrosshairStore((s) => s.hotkeys)
   const arrowCount = useRef<Record<string, number>>({})
 
   useEffect(() => { setOverlayWindow(overlayMode) }, [overlayMode])
@@ -126,20 +127,34 @@ export default function App() {
   }, [overlayMode])
 
   // always-on global shortcuts (work even when window not focused)
+  // re-register whenever hotkeys change so custom bindings take effect immediately
   useEffect(() => {
     if (!isTauri()) return
     const h = useCrosshairStore.getState().hotkeys
-    registerShortcut(h.toggleOverlay, () => {
-      const st = useCrosshairStore.getState()
-      st.setOverlayMode(!st.overlayMode)
-    })
-    registerShortcut(h.toggleVisibility, () => {
-      const st = useCrosshairStore.getState()
-      st.updateConfig({ mainAlpha: st.config.mainAlpha > 0 ? 0 : 1 })
-    })
-  }, [])
+
+    if (h.toggleOverlay) {
+      registerShortcut(h.toggleOverlay, () => {
+        const st = useCrosshairStore.getState()
+        st.setOverlayMode(!st.overlayMode)
+      })
+    }
+    if (h.toggleVisibility) {
+      registerShortcut(h.toggleVisibility, () => {
+        const st = useCrosshairStore.getState()
+        st.updateConfig({ mainAlpha: st.config.mainAlpha > 0 ? 0 : 1 })
+      })
+    }
+
+    return () => {
+      import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => {
+        if (h.toggleOverlay) unregister(h.toggleOverlay)
+        if (h.toggleVisibility) unregister(h.toggleVisibility)
+      })
+    }
+  }, [hotkeys])
 
   // overlay mode global shortcuts (with repeat for arrows)
+  // re-register whenever overlayMode or hotkeys change
   useEffect(() => {
     if (!isTauri()) return
     if (!overlayMode) return
@@ -168,12 +183,13 @@ export default function App() {
 
     return () => {
       clearArrowRepeat()
-      Object.values(h).forEach((s) => {
-        if (s === h.toggleOverlay || s === h.toggleVisibility) return
-        import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => unregister(s))
+      const allKeys = [...onceKeys, ...repeatKeys]
+      allKeys.forEach((k) => {
+        const s = h[k]
+        if (s) import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => unregister(s))
       })
     }
-  }, [overlayMode])
+  }, [overlayMode, hotkeys])
 
   // keyboard handler (editor mode + browser fallback for overlay)
   useEffect(() => {
