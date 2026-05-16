@@ -92,13 +92,19 @@ export async function unregisterShortcut(shortcut: string): Promise<void> {
   await unregister(shortcut)
 }
 
-// State persistence (uses BaseDirectory.AppData = %APPDATA%\com.crosshair.app\)
+// State persistence
+async function getStateDir(): Promise<string> {
+  const { appDataDir } = await import('@tauri-apps/api/path')
+  return await appDataDir()
+}
+
 export async function saveAppState(data: string): Promise<void> {
   if (!isTauri()) return
   try {
-    const { writeTextFile, mkdir, BaseDirectory } = await import('@tauri-apps/plugin-fs')
-    await mkdir('.', { baseDir: BaseDirectory.AppData, recursive: true }).catch(() => {})
-    await writeTextFile('state.json', data, { baseDir: BaseDirectory.AppData })
+    const { writeTextFile, mkdir } = await import('@tauri-apps/plugin-fs')
+    const dir = await getStateDir()
+    await mkdir(dir, { recursive: true })
+    await writeTextFile(dir + 'state.json', data)
   } catch (e) {
     console.error('saveAppState failed:', e)
   }
@@ -107,8 +113,9 @@ export async function saveAppState(data: string): Promise<void> {
 export async function loadAppState(): Promise<string | null> {
   if (!isTauri()) return null
   try {
-    const { readTextFile, BaseDirectory } = await import('@tauri-apps/plugin-fs')
-    return await readTextFile('state.json', { baseDir: BaseDirectory.AppData })
+    const { readTextFile } = await import('@tauri-apps/plugin-fs')
+    const dir = await getStateDir()
+    return await readTextFile(dir + 'state.json')
   } catch (e) {
     console.error('loadAppState failed:', e)
     return null
