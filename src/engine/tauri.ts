@@ -92,19 +92,12 @@ export async function unregisterShortcut(shortcut: string): Promise<void> {
   await unregister(shortcut)
 }
 
-// State persistence
-async function getStateDir(): Promise<string> {
-  const { appDataDir } = await import('@tauri-apps/api/path')
-  return await appDataDir()
-}
-
+// State persistence (via Rust commands, bypasses fs plugin scope)
 export async function saveAppState(data: string): Promise<void> {
   if (!isTauri()) return
   try {
-    const { writeTextFile, mkdir } = await import('@tauri-apps/plugin-fs')
-    const dir = await getStateDir()
-    await mkdir(dir, { recursive: true })
-    await writeTextFile(dir + 'state.json', data)
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('save_state', { data })
   } catch (e) {
     console.error('saveAppState failed:', e)
   }
@@ -113,9 +106,8 @@ export async function saveAppState(data: string): Promise<void> {
 export async function loadAppState(): Promise<string | null> {
   if (!isTauri()) return null
   try {
-    const { readTextFile } = await import('@tauri-apps/plugin-fs')
-    const dir = await getStateDir()
-    return await readTextFile(dir + 'state.json')
+    const { invoke } = await import('@tauri-apps/api/core')
+    return await invoke<string | null>('load_state')
   } catch (e) {
     console.error('loadAppState failed:', e)
     return null

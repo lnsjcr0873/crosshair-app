@@ -1,8 +1,26 @@
+use std::fs;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager,
 };
+
+#[tauri::command]
+fn save_state(app: tauri::AppHandle, data: String) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    fs::write(dir.join("state.json"), &data).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn load_state(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = app.path().app_data_dir().map_err(|e| e.to_string())?.join("state.json");
+    if !path.exists() {
+        return Ok(None);
+    }
+    fs::read_to_string(&path).map(Some).map_err(|e| e.to_string())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -10,6 +28,7 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .invoke_handler(tauri::generate_handler![save_state, load_state])
         .setup(|app| {
             let show = MenuItemBuilder::with_id("show", "显示").build(app)?;
             let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
