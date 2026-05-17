@@ -117,7 +117,7 @@ export default function CanvasPreview() {
 
       const snapped = Math.round(newDist)
       moveTick(d.id, snapped)
-      draggingRef.current = { ...d, origDist: snapped }
+      draggingRef.current = { ...d, startX: e.clientX, startY: e.clientY, origDist: snapped }
     },
     [config.ticks, scale, moveTick],
   )
