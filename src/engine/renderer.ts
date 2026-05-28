@@ -109,42 +109,39 @@ function drawTick(ctx: CanvasRenderingContext2D, tick: TickMark, selected: boole
   ctx.fillStyle = color
   ctx.lineWidth = selected ? tick.lineWidth + 1 : tick.lineWidth
 
-  let x: number, y: number, dx: number, dy: number
+  const ox = tick.offsetX || 0
+  const oy = tick.offsetY || 0
 
   if (tick.axis === 'horizontal') {
-    x = tick.distance
-    y = 0
-    dx = 0
-    dy = dir * tick.lineLength
-  } else {
-    x = 0
-    y = tick.distance
-    dx = dir * tick.lineLength
-    dy = 0
-  }
-
-  // draw tick line
-  ctx.beginPath()
-  ctx.moveTo(x, y)
-  ctx.lineTo(x + dx, y + dy)
-  ctx.stroke()
-
-  // draw label
-  if (tick.label) {
-    ctx.font = `${tick.fontSize}px monospace`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-
-    let lx: number, ly: number
-    if (tick.axis === 'horizontal') {
-      lx = tick.distance
-      ly = dir * (tick.lineLength + tick.fontSize / 2 + 4)
-    } else {
-      lx = dir * (tick.lineLength + tick.fontSize * 0.3 + 4)
-      ly = tick.distance
+    const x = tick.distance + ox
+    const y = oy
+    const ex = x
+    const ey = y + dir * tick.lineLength
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(ex, ey)
+    ctx.stroke()
+    if (tick.label) {
+      ctx.font = `${tick.fontSize}px monospace`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(tick.label, x + tick.labelOffsetX, ey + dir * (tick.fontSize / 2 + 4) + tick.labelOffsetY)
     }
-
-    ctx.fillText(tick.label, lx + tick.labelOffsetX, ly + tick.labelOffsetY)
+  } else {
+    const x = ox
+    const y = tick.distance + oy
+    const ex = x + dir * tick.lineLength
+    const ey = y
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(ex, ey)
+    ctx.stroke()
+    if (tick.label) {
+      ctx.font = `${tick.fontSize}px monospace`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(tick.label, ex + dir * (tick.fontSize * 0.3 + 4) + tick.labelOffsetX, y + tick.labelOffsetY)
+    }
   }
 }
 
@@ -166,29 +163,28 @@ export function pickTickAtPoint(
     if (!tick.visible) continue
 
     const dir = tick.direction ?? (tick.axis === 'horizontal' ? -1 : 1)
-    let tx = 0
-    let ty = 0
-    let endX = 0
-    let endY = 0
+    const ox = tick.offsetX || 0
+    const oy = tick.offsetY || 0
+    let tx = 0, ty = 0, ex = 0, ey = 0
 
     if (tick.axis === 'horizontal') {
-      tx = tick.distance
-      ty = 0
-      endX = tick.distance
-      endY = dir * tick.lineLength
+      tx = tick.distance + ox
+      ty = oy
+      ex = tx
+      ey = ty + dir * tick.lineLength
     } else {
-      tx = 0
-      ty = tick.distance
-      endX = dir * tick.lineLength
-      endY = tick.distance
+      tx = ox
+      ty = tick.distance + oy
+      ex = tx + dir * tick.lineLength
+      ey = ty
     }
 
     tx *= scale
     ty *= scale
-    endX *= scale
-    endY *= scale
+    ex *= scale
+    ey *= scale
 
-    const dist = pointToSegmentDist(mx, my, tx, ty, endX, endY)
+    const dist = pointToSegmentDist(mx, my, tx, ty, ex, ey)
     if (dist < threshold) return tick
   }
   return null

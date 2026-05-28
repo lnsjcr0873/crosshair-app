@@ -36,6 +36,7 @@ interface CrosshairStore {
   updateTick: (id: string, partial: Partial<TickMark>) => void
   moveTick: (id: string, newDistance: number) => void
   duplicateTick: (id: string) => void
+  mirrorTick: (id: string) => void
   batchUpdateTicks: (ids: string[], partial: Partial<TickMark>) => void
   loadPreset: (config: CrosshairConfig) => void
 
@@ -175,7 +176,9 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
 
     removeTick: (id) =>
       set((s) => {
-        const ticks = s.config.ticks.filter((t) => t.id !== id)
+        const tick = s.config.ticks.find((t) => t.id === id)
+        const extraId = tick?.mirrorId
+        const ticks = s.config.ticks.filter((t) => t.id !== id && t.id !== extraId)
         const newConfig = { ...s.config, ticks }
         const result = pushHistory(s.history, s.historyIndex, newConfig)
         return {
@@ -189,6 +192,11 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     removeTicks: (ids) =>
       set((s) => {
         const idSet = new Set(ids)
+        // also remove mirrored ticks
+        for (const tid of ids) {
+          const t = s.config.ticks.find((x) => x.id === tid)
+          if (t?.mirrorId) idSet.add(t.mirrorId)
+        }
         const ticks = s.config.ticks.filter((t) => !idSet.has(t.id))
         const newConfig = { ...s.config, ticks }
         const result = pushHistory(s.history, s.historyIndex, newConfig)
@@ -202,7 +210,13 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
 
     updateTick: (id, partial) =>
       set((s) => {
-        const ticks = updateTicks(s.config.ticks, id, partial, s.symmetricMode)
+        let ticks = updateTicks(s.config.ticks, id, partial, s.symmetricMode)
+        const tick = ticks.find((t) => t.id === id)
+        if (tick?.mirrorId) {
+          const mirrorPartial: Partial<TickMark> = { ...partial }
+          if ('distance' in partial) mirrorPartial.distance = -(partial.distance as number)
+          ticks = ticks.map((t) => (t.id === tick.mirrorId ? { ...t, ...mirrorPartial } : t))
+        }
         const newConfig = { ...s.config, ticks }
         const result = pushHistory(s.history, s.historyIndex, newConfig)
         return { ...result, configList: syncListEntry(s, result.config) }
@@ -234,6 +248,26 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
         const ticks = [...s.config.ticks, newTick]
         const newConfig = { ...s.config, ticks }
         const result = { ...pushHistory(s.history, s.historyIndex, newConfig), selectedTickId: newTick.id }
+        return { ...result, configList: syncListEntry(s, result.config) }
+      }),
+
+    mirrorTick: (id) =>
+      set((s) => {
+        const orig = s.config.ticks.find((t) => t.id === id)
+        if (!orig) return s
+        // Toggle off: if already mirrored, remove the mirror
+        if (orig.mirrorId) {
+          const ticks = s.config.ticks.filter((t) => t.id !== orig.mirrorId)
+          const edited = ticks.map((t) => (t.id === id ? { ...t, mirrorId: undefined } : t))
+          const newConfig = { ...s.config, ticks: edited }
+          const result = pushHistory(s.history, s.historyIndex, newConfig)
+          return { ...result, configList: syncListEntry(s, result.config) }
+        }
+        // Toggle on: create mirror
+        const mirror = { ...orig, id: generateId(), distance: -orig.distance, mirrorId: undefined }
+        const edited = [...s.config.ticks.map((t) => (t.id === id ? { ...t, mirrorId: mirror.id } : t)), mirror]
+        const newConfig = { ...s.config, ticks: edited }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
         return { ...result, configList: syncListEntry(s, result.config) }
       }),
 

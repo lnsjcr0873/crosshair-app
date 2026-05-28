@@ -51,19 +51,29 @@ export function generateSvg(config: CrosshairConfig): string {
     if (tick.axis === 'horizontal' && tick.distance < 0 && !config.showLeftTicks) continue
     if (tick.axis === 'horizontal' && tick.distance > 0 && !config.showRightTicks) continue
     const dir = tick.direction ?? (tick.axis === 'horizontal' ? -1 : 1)
-    const x1 = tick.axis === 'horizontal' ? cx + tick.distance : cx
-    const y1 = tick.axis === 'horizontal' ? cy : cy + tick.distance
-    const x2 = tick.axis === 'horizontal' ? cx + tick.distance : cx + dir * tick.lineLength
-    const y2 = tick.axis === 'horizontal' ? cy + dir * tick.lineLength : cy + tick.distance
+    const ox = tick.offsetX || 0
+    const oy = tick.offsetY || 0
+    let x1: number, y1: number, x2: number, y2: number
+    if (tick.axis === 'horizontal') {
+      x1 = cx + tick.distance + ox
+      y1 = cy + oy
+      x2 = x1
+      y2 = y1 + dir * tick.lineLength
+    } else {
+      x1 = cx + ox
+      y1 = cy + tick.distance + oy
+      x2 = x1 + dir * tick.lineLength
+      y2 = y1
+    }
     lines.push(tag('line', { x1, y1, x2, y2, stroke: esc(tick.color), 'stroke-width': tick.lineWidth, opacity }))
     if (tick.label) {
       let lx: number, ly: number
       if (tick.axis === 'horizontal') {
-        lx = cx + tick.distance
-        ly = cy + dir * (tick.lineLength + tick.fontSize / 2 + 4)
+        lx = x1
+        ly = y2 + dir * (tick.fontSize / 2 + 4)
       } else {
-        lx = cx + dir * (tick.lineLength + tick.fontSize * 0.3 + 4)
-        ly = cy + tick.distance
+        lx = x2 + dir * (tick.fontSize * 0.3 + 4)
+        ly = y1
       }
       lines.push(`<text x="${lx + tick.labelOffsetX}" y="${ly + tick.labelOffsetY}" fill="${esc(tick.color)}" font-size="${tick.fontSize}" font-family="monospace" text-anchor="middle" dominant-baseline="central">${esc(tick.label)}</text>`)
     }

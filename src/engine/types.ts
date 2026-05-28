@@ -10,6 +10,9 @@ export interface TickMark {
   fontSize: number
   labelOffsetX: number
   labelOffsetY: number
+  offsetX: number
+  offsetY: number
+  mirrorId?: string
   visible: boolean
 }
 
@@ -110,6 +113,8 @@ export function createTick(axis: 'horizontal' | 'vertical', distance: number, di
     fontSize: 12,
     labelOffsetX: 0,
     labelOffsetY: 0,
+    offsetX: 0,
+    offsetY: 0,
     visible: true,
   }
 }

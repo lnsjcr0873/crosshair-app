@@ -95,13 +95,14 @@ export default function Toolbar() {
         <span>线宽</span>
         <input
           type="range"
-          min={1}
+          min={0.1}
           max={6}
-          step={0.5}
+          step={0.1}
           value={config.mainLineWidth}
           onChange={(e) => updateConfig({ mainLineWidth: Number(e.target.value) })}
           className="w-16"
         />
+        <span className="text-zinc-500 w-8 text-right">{config.mainLineWidth.toFixed(1)}</span>
       </div>
 
       <div className="flex items-center gap-1 text-xs text-zinc-400">
