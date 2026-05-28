@@ -15,18 +15,33 @@ export interface TickMark {
   mirrorId?: string
   visible: boolean
   generated?: boolean
+  generation?: number
+}
+
+export interface FissionLevelConfig {
+  lineLength?: number
+  lineWidth?: number
+  color?: string
+  fontSize?: number
+  offsetX?: number
+  offsetY?: number
+  labelOffsetX?: number
+  labelOffsetY?: number
+  inherit?: Partial<Record<
+    'lineLength'|'lineWidth'|'color'|'fontSize'|'offsetX'|'offsetY'|'labelOffsetX'|'labelOffsetY',
+    'previous'|'next'
+  >>
 }
 
 export interface FissionConfig {
   groupMode: 'by-direction' | 'by-distance'
-  inheritFrom: 'previous' | 'next' | 'uniform'
-  lineLength: number
-  lineWidth: number
-  color: string
-  fontSize: number
   direction: 1 | -1 | 'inherit'
   symmetric: boolean
   markGenerated: boolean
+  labelMode: 'midpoint' | 'left-value' | 'right-value' | 'distance'
+  maxIterations: number
+  onlyGroups?: ('h-left' | 'h-right' | 'v-top' | 'v-bottom')[]
+  levels: FissionLevelConfig[]
 }
 
 export interface ReferenceImage {
@@ -89,17 +104,29 @@ export const DEFAULT_HOTKEYS = {
   redo: 'Ctrl+Shift+Z',
 }
 
-export function defaultFissionConfig(): FissionConfig {
+export function defaultFissionLevel(): FissionLevelConfig {
   return {
-    groupMode: 'by-distance',
-    inheritFrom: 'uniform',
     lineLength: 8,
     lineWidth: 1,
     color: '#00ff00',
     fontSize: 10,
+    offsetX: 0,
+    offsetY: 0,
+    labelOffsetX: 0,
+    labelOffsetY: 0,
+  }
+}
+
+export function defaultFissionConfig(): FissionConfig {
+  const level = defaultFissionLevel()
+  return {
+    groupMode: 'by-distance',
     direction: 'inherit',
     symmetric: false,
     markGenerated: true,
+    labelMode: 'midpoint',
+    maxIterations: 8,
+    levels: [{ ...level }],
   }
 }
 

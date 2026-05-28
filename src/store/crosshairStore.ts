@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { defaultPreset } from '../engine/preset'
-import type { CrosshairConfig, TickMark, ConfigEntry, FissionConfig } from '../engine/types'
-import { createTick, generateId, createDefaultConfig, DEFAULT_HOTKEYS, defaultFissionConfig } from '../engine/types'
+import type { CrosshairConfig, TickMark, ConfigEntry, FissionConfig, FissionLevelConfig } from '../engine/types'
+import { createTick, generateId, createDefaultConfig, DEFAULT_HOTKEYS, defaultFissionConfig, defaultFissionLevel } from '../engine/types'
 
 interface HistoryEntry {
   config: CrosshairConfig
@@ -88,6 +88,26 @@ function syncListEntry(s: CrosshairStore, newConfig: CrosshairConfig) {
   const list = [...s.configList]
   list[s.activeIndex] = { ...list[s.activeIndex], config: newConfig }
   return list
+}
+
+const PROP_KEYS = ['lineLength','lineWidth','color','fontSize','offsetX','offsetY','labelOffsetX','labelOffsetY'] as const
+
+function getLevel(levels: FissionLevelConfig[], idx: number): FissionLevelConfig {
+  if (idx < levels.length) return levels[idx]
+  return levels.length > 0 ? levels[levels.length - 1] : defaultFissionLevel()
+}
+
+function resolveLevelValue(
+  levelIdx: number, levels: FissionLevelConfig[], prop: string,
+  leftTick: TickMark, rightTick: TickMark
+): any {
+  const level = getLevel(levels, levelIdx)
+  const inherit = level.inherit?.[prop as keyof typeof level.inherit]
+  if (inherit === 'previous') return leftTick[prop as keyof TickMark]
+  if (inherit === 'next') return rightTick[prop as keyof TickMark]
+  if (level[prop as keyof FissionLevelConfig] !== undefined) return level[prop as keyof FissionLevelConfig]
+  if (levelIdx > 0) return resolveLevelValue(levelIdx - 1, levels, prop, leftTick, rightTick)
+  return defaultFissionLevel()[prop as keyof FissionLevelConfig]
 }
 
 export const useCrosshairStore = create<CrosshairStore>((set, get) => {
@@ -347,6 +367,8 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     fissionSplit: () =>
       set((s) => {
         const fc = s.config.fissionConfig ?? defaultFissionConfig()
+        if (!fc.levels || fc.levels.length === 0) return s
+
         const visible = s.config.ticks.filter((t) => {
           if (!t.visible) return false
           if (t.axis === 'vertical' && t.distance < 0 && !s.config.showTopTicks) return false
@@ -356,9 +378,18 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
           return true
         })
 
+        let maxGen = 0
+        for (const t of visible) { const g = t.generation ?? 0; if (g > maxGen) maxGen = g }
+        const gen = maxGen + 1
+        if (gen > fc.maxIterations) return s
+
+        const existingDists = new Set(s.config.ticks.map((t) => `${t.axis}:${Math.round(t.distance * 100)}`))
+        const createdThisPass = new Set<string>()
         const groups = new Map<string, TickMark[]>()
         for (const t of visible) {
           const ds = t.distance < 0 ? 'neg' : 'pos'
+          const axisPair = t.axis === 'horizontal' ? (t.distance < 0 ? 'h-left' : 'h-right') : (t.distance < 0 ? 'v-top' : 'v-bottom')
+          if (fc.onlyGroups && !fc.onlyGroups.includes(axisPair as any)) continue
           const key = fc.groupMode === 'by-direction' ? `${t.axis}:${ds}:${t.direction}` : `${t.axis}:${ds}`
           if (!groups.has(key)) groups.set(key, [])
           groups.get(key)!.push(t)
@@ -377,42 +408,49 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
           if (deduped.length < 2) continue
 
           for (let i = 0; i < deduped.length - 1; i++) {
-            const a = deduped[i]
-            const b = deduped[i + 1]
+            const a = deduped[i]; const b = deduped[i + 1]
             const newDist = Math.round(((a.distance + b.distance) / 2) * 100) / 100
+            const key = `${a.axis}:${Math.round(newDist * 100)}`
+            if (existingDists.has(key) || createdThisPass.has(key)) continue
+            createdThisPass.add(key)
 
-            const aNum = parseFloat(a.label)
-            const bNum = parseFloat(b.label)
-            const newLabel = !isNaN(aNum) && !isNaN(bNum) ? String((aNum + bNum) / 2) : String(Math.round(newDist))
+            const aNum = parseFloat(a.label); const bNum = parseFloat(b.label)
+            let newLabel: string
+            if (fc.labelMode === 'midpoint') {
+              newLabel = !isNaN(aNum) && !isNaN(bNum) ? String((aNum + bNum) / 2) : String(Math.round(newDist))
+            } else if (fc.labelMode === 'left-value') {
+              newLabel = !isNaN(aNum) ? String(aNum) : String(Math.round(newDist))
+            } else if (fc.labelMode === 'right-value') {
+              newLabel = !isNaN(bNum) ? String(bNum) : String(Math.round(newDist))
+            } else {
+              newLabel = String(Math.round(newDist))
+            }
 
-            const src = fc.inheritFrom === 'next' ? b : a
-            const dir = fc.direction === 'inherit' ? src.direction : (fc.direction as 1 | -1)
-
+            const dir = fc.direction === 'inherit' ? a.direction : (fc.direction as 1 | -1)
             const tick = createTick(a.axis, newDist, dir)
             tick.label = newLabel
-            if (fc.inheritFrom === 'uniform') {
-              tick.lineLength = fc.lineLength
-              tick.lineWidth = fc.lineWidth
-              tick.color = fc.color
-              tick.fontSize = fc.fontSize
-            } else {
-              tick.lineLength = src.lineLength
-              tick.lineWidth = src.lineWidth
-              tick.color = src.color
-              tick.fontSize = src.fontSize
-            }
-            if (fc.markGenerated) tick.generated = true
 
+            const levelIdx = gen - 1
+            for (const prop of PROP_KEYS) {
+              (tick as any)[prop] = resolveLevelValue(levelIdx, fc.levels, prop, a, b)
+            }
+            tick.generation = gen
+            if (fc.markGenerated) tick.generated = true
             created.push(tick)
+
             if (fc.symmetric) {
-              const mirror = { ...tick, id: generateId(), distance: -newDist, mirrorId: undefined, generated: fc.markGenerated }
-              created.push(mirror)
+              const mDist = -newDist
+              const mKey = `${a.axis}:${Math.round(mDist * 100)}`
+              if (!existingDists.has(mKey) && !createdThisPass.has(mKey)) {
+                createdThisPass.add(mKey)
+                const mirror = { ...tick, id: generateId(), distance: mDist, mirrorId: undefined, generation: gen, generated: fc.markGenerated }
+                created.push(mirror)
+              }
             }
           }
         }
 
         if (created.length === 0) return s
-
         const allTicks = [...s.config.ticks, ...created]
         const newConfig = { ...s.config, ticks: allTicks }
         const result = pushHistory(s.history, s.historyIndex, newConfig)
