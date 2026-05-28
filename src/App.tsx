@@ -66,6 +66,14 @@ function buildActionMap(): Map<string, (st: ReturnType<typeof useCrosshairStore.
       m.set(key, (st: any) => { if (idx < st.configList.length) st.switchConfig(idx) })
     }
   }
+  // fission
+  const fKey = cfg('fission')
+  if (fKey) m.set(fKey, (st: any) => st.fissionSplit())
+  // undo/redo
+  const uKey = cfg('undo')
+  if (uKey) m.set(uKey, (st: any) => st.undo())
+  const rKey = cfg('redo')
+  if (rKey) m.set(rKey, (st: any) => st.redo())
   return m
 }
 
@@ -170,24 +178,29 @@ export default function App() {
     if (!isTauri()) return
     const h = useCrosshairStore.getState().hotkeys
 
-    if (h.toggleOverlay) {
-      registerShortcut(h.toggleOverlay, () => {
-        const st = useCrosshairStore.getState()
-        st.setOverlayMode(!st.overlayMode)
-      })
-    }
-    if (h.toggleVisibility) {
-      registerShortcut(h.toggleVisibility, () => {
-        const st = useCrosshairStore.getState()
-        st.updateConfig({ mainAlpha: st.config.mainAlpha > 0 ? 0 : 1 })
-      })
+    const reg = async (key: string) => {
+      const s = h[key]
+      if (!s) return
+      const action = buildActionMap().get(s)
+      if (action) await registerShortcut(s, () => action(useCrosshairStore.getState()))
     }
 
+    reg('toggleOverlay')
+    reg('toggleVisibility')
+    reg('fission')
+    reg('undo')
+    reg('redo')
+
     return () => {
-      import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => {
-        if (h.toggleOverlay) unregister(h.toggleOverlay)
-        if (h.toggleVisibility) unregister(h.toggleVisibility)
-      })
+      const unreg = async (key: string) => {
+        const s = useCrosshairStore.getState().hotkeys[key]
+        if (s) (await import('@tauri-apps/plugin-global-shortcut')).unregister(s)
+      }
+      unreg('toggleOverlay')
+      unreg('toggleVisibility')
+      unreg('fission')
+      unreg('undo')
+      unreg('redo')
     }
   }, [hotkeys])
 
@@ -235,7 +248,8 @@ export default function App() {
       const ctrl = e.ctrlKey || e.metaKey
       const st = useCrosshairStore.getState()
 
-      // built-in editor shortcuts
+      // built-in editor shortcuts (skip in Tauri, handled by global shortcuts)
+      if (isTauri() && ctrl && (e.code === 'KeyZ' || e.key === 'z')) return
       if (ctrl && (e.code === 'KeyZ' || e.key === 'z')) {
         if (e.shiftKey) { e.preventDefault(); st.redo() }
         else { e.preventDefault(); st.undo() }
@@ -267,8 +281,8 @@ export default function App() {
       const action = buildActionMap().get(combo)
       if (action) {
         const h = useCrosshairStore.getState().hotkeys
-        // In Tauri, toggleOverlay/toggleVisibility handled by global shortcuts (work when unfocused)
-        if (isTauri() && (combo === h.toggleOverlay || combo === h.toggleVisibility)) return
+        // In Tauri, global shortcuts handle these (work when unfocused)
+        if (isTauri() && (combo === h.toggleOverlay || combo === h.toggleVisibility || combo === h.fission || combo === h.undo || combo === h.redo)) return
         const isGlobal = combo === h.toggleOverlay || combo === h.toggleVisibility || combo.startsWith('Ctrl+')
         if (isGlobal || st.overlayMode) {
           e.preventDefault()

@@ -14,6 +14,19 @@ export interface TickMark {
   offsetY: number
   mirrorId?: string
   visible: boolean
+  generated?: boolean
+}
+
+export interface FissionConfig {
+  groupMode: 'by-direction' | 'by-distance'
+  inheritFrom: 'previous' | 'next' | 'uniform'
+  lineLength: number
+  lineWidth: number
+  color: string
+  fontSize: number
+  direction: 1 | -1 | 'inherit'
+  symmetric: boolean
+  markGenerated: boolean
 }
 
 export interface ReferenceImage {
@@ -45,6 +58,7 @@ export interface CrosshairConfig {
   showRightTicks: boolean
   referenceImage?: ReferenceImage
   ticks: TickMark[]
+  fissionConfig?: FissionConfig
 }
 
 export interface ConfigEntry {
@@ -70,6 +84,23 @@ export const DEFAULT_HOTKEYS = {
   switchConfig7: 'Ctrl+7',
   switchConfig8: 'Ctrl+8',
   switchConfig9: 'Ctrl+9',
+  fission: 'Ctrl+Shift+F',
+  undo: 'Ctrl+Z',
+  redo: 'Ctrl+Shift+Z',
+}
+
+export function defaultFissionConfig(): FissionConfig {
+  return {
+    groupMode: 'by-distance',
+    inheritFrom: 'uniform',
+    lineLength: 8,
+    lineWidth: 1,
+    color: '#00ff00',
+    fontSize: 10,
+    direction: 'inherit',
+    symmetric: false,
+    markGenerated: true,
+  }
 }
 
 export function createDefaultConfig(): CrosshairConfig {
@@ -93,6 +124,7 @@ export function createDefaultConfig(): CrosshairConfig {
     showLeftTicks: true,
     showRightTicks: true,
     ticks: [],
+    fissionConfig: defaultFissionConfig(),
   }
 }
 

@@ -11,6 +11,9 @@ const ACTION_LABELS: Record<string, string> = {
   decDistance: '减小距离',
   incLineLength: '增加线长',
   decLineLength: '减小线长',
+  fission: '刻度裂变',
+  undo: '撤销',
+  redo: '重做',
 }
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {

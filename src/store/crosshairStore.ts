@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { defaultPreset } from '../engine/preset'
-import type { CrosshairConfig, TickMark, ConfigEntry } from '../engine/types'
-import { createTick, generateId, createDefaultConfig, DEFAULT_HOTKEYS } from '../engine/types'
+import type { CrosshairConfig, TickMark, ConfigEntry, FissionConfig } from '../engine/types'
+import { createTick, generateId, createDefaultConfig, DEFAULT_HOTKEYS, defaultFissionConfig } from '../engine/types'
 
 interface HistoryEntry {
   config: CrosshairConfig
@@ -39,6 +39,8 @@ interface CrosshairStore {
   mirrorTick: (id: string) => void
   batchUpdateTicks: (ids: string[], partial: Partial<TickMark>) => void
   loadPreset: (config: CrosshairConfig) => void
+  fissionSplit: () => void
+  clearGeneratedTicks: () => void
 
   undo: () => void
   redo: () => void
@@ -341,5 +343,88 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
 
     resetHotkeys: () =>
       set({ hotkeys: { ...DEFAULT_HOTKEYS } }),
+
+    fissionSplit: () =>
+      set((s) => {
+        const fc = s.config.fissionConfig ?? defaultFissionConfig()
+        const visible = s.config.ticks.filter((t) => {
+          if (!t.visible) return false
+          if (t.axis === 'vertical' && t.distance < 0 && !s.config.showTopTicks) return false
+          if (t.axis === 'vertical' && t.distance >= 0 && !s.config.showBottomTicks) return false
+          if (t.axis === 'horizontal' && t.distance < 0 && !s.config.showLeftTicks) return false
+          if (t.axis === 'horizontal' && t.distance > 0 && !s.config.showRightTicks) return false
+          return true
+        })
+
+        const groups = new Map<string, TickMark[]>()
+        for (const t of visible) {
+          const ds = t.distance < 0 ? 'neg' : 'pos'
+          const key = fc.groupMode === 'by-direction' ? `${t.axis}:${ds}:${t.direction}` : `${t.axis}:${ds}`
+          if (!groups.has(key)) groups.set(key, [])
+          groups.get(key)!.push(t)
+        }
+
+        const created: TickMark[] = []
+
+        for (const ticks of groups.values()) {
+          const sorted = [...ticks].sort((a, b) => a.distance - b.distance)
+          const deduped: TickMark[] = []
+          for (const t of sorted) {
+            if (deduped.length === 0 || Math.abs(t.distance - deduped[deduped.length - 1].distance) > 0.01) {
+              deduped.push(t)
+            }
+          }
+          if (deduped.length < 2) continue
+
+          for (let i = 0; i < deduped.length - 1; i++) {
+            const a = deduped[i]
+            const b = deduped[i + 1]
+            const newDist = Math.round(((a.distance + b.distance) / 2) * 100) / 100
+
+            const aNum = parseFloat(a.label)
+            const bNum = parseFloat(b.label)
+            const newLabel = !isNaN(aNum) && !isNaN(bNum) ? String((aNum + bNum) / 2) : String(Math.round(newDist))
+
+            const src = fc.inheritFrom === 'next' ? b : a
+            const dir = fc.direction === 'inherit' ? src.direction : (fc.direction as 1 | -1)
+
+            const tick = createTick(a.axis, newDist, dir)
+            tick.label = newLabel
+            if (fc.inheritFrom === 'uniform') {
+              tick.lineLength = fc.lineLength
+              tick.lineWidth = fc.lineWidth
+              tick.color = fc.color
+              tick.fontSize = fc.fontSize
+            } else {
+              tick.lineLength = src.lineLength
+              tick.lineWidth = src.lineWidth
+              tick.color = src.color
+              tick.fontSize = src.fontSize
+            }
+            if (fc.markGenerated) tick.generated = true
+
+            created.push(tick)
+            if (fc.symmetric) {
+              const mirror = { ...tick, id: generateId(), distance: -newDist, mirrorId: undefined, generated: fc.markGenerated }
+              created.push(mirror)
+            }
+          }
+        }
+
+        if (created.length === 0) return s
+
+        const allTicks = [...s.config.ticks, ...created]
+        const newConfig = { ...s.config, ticks: allTicks }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config) }
+      }),
+
+    clearGeneratedTicks: () =>
+      set((s) => {
+        const ticks = s.config.ticks.filter((t) => !t.generated)
+        const newConfig = { ...s.config, ticks }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config) }
+      }),
   }
 })

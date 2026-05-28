@@ -3,9 +3,11 @@ import { useCrosshairStore } from '../store/crosshairStore'
 import { vssStylePreset, simplePreset } from '../engine/preset'
 import { exportPng, exportSvg, savePreset, loadPresetFromFile } from '../engine/actions'
 import SettingsPanel from './SettingsPanel'
+import FissionSettingsPanel from './FissionSettingsPanel'
 
 export default function Toolbar() {
   const [showSettings, setShowSettings] = useState(false)
+  const [showFission, setShowFission] = useState(false)
   const config = useCrosshairStore((s) => s.config)
   const updateConfig = useCrosshairStore((s) => s.updateConfig)
   const setScale = useCrosshairStore((s) => s.setScale)
@@ -17,6 +19,9 @@ export default function Toolbar() {
   const redo = useCrosshairStore((s) => s.redo)
   const historyIndex = useCrosshairStore((s) => s.historyIndex)
   const history = useCrosshairStore((s) => s.history)
+  const fissionSplit = useCrosshairStore((s) => s.fissionSplit)
+  const clearGeneratedTicks = useCrosshairStore((s) => s.clearGeneratedTicks)
+  const hasGenerated = config.ticks.some((t) => t.generated)
 
   const handleExportPng = () => exportPng(config)
   const handleExportSvg = () => exportSvg(config)
@@ -179,10 +184,26 @@ export default function Toolbar() {
         加载预设
       </button>
 
+      <div className="w-px h-5 bg-zinc-600 mx-1" />
+
+      <button onClick={() => fissionSplit()} className="btn-secondary text-xs" title="刻度裂变 (Ctrl+Shift+F)">
+        ⚡ 裂变
+      </button>
+      {hasGenerated && (
+        <button onClick={() => clearGeneratedTicks()} className="btn-danger text-xs">
+          清除裂变刻度
+        </button>
+      )}
+
+      <button onClick={() => setShowFission(!showFission)} className="btn-icon text-xs" title="裂变设置">
+        ⚙
+      </button>
+
       <button onClick={() => setShowSettings(!showSettings)} className="btn-icon text-base" title="快捷键设置">
         ⚙
       </button>
     </div>
     {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+    {showFission && <FissionSettingsPanel onClose={() => setShowFission(false)} />}
   </>)
 }
