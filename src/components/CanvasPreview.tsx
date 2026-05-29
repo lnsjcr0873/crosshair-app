@@ -9,6 +9,7 @@ export default function CanvasPreview() {
   const scale = useCrosshairStore((s) => s.scale)
   const selectedTickId = useCrosshairStore((s) => s.selectedTickId)
   const overlayMode = useCrosshairStore((s) => s.overlayMode)
+  const toastMsg = useCrosshairStore((s) => s.toastMsg)
   const selectTick = useCrosshairStore((s) => s.selectTick)
   const moveTick = useCrosshairStore((s) => s.moveTick)
   const updateConfig = useCrosshairStore((s) => s.updateConfig)
@@ -213,6 +214,11 @@ export default function CanvasPreview() {
       {!overlayMode && (
         <div className="absolute bottom-2 left-2 text-zinc-500 text-xs font-mono">
           Scale: {scale.toFixed(1)}x | Ticks: {config.ticks.filter((t) => t.visible).length}
+        </div>
+      )}
+      {toastMsg && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none bg-black/70 text-white text-sm px-4 py-2 rounded-lg whitespace-nowrap animate-fade-out">
+          {toastMsg}
         </div>
       )}
     </div>

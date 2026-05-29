@@ -5,6 +5,8 @@ use tauri::{
     Manager,
 };
 
+mod hook;
+
 #[tauri::command]
 fn save_state(app: tauri::AppHandle, data: String) -> Result<(), String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
@@ -22,13 +24,23 @@ fn load_state(app: tauri::AppHandle) -> Result<Option<String>, String> {
     fs::read_to_string(&path).map(Some).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn toggle_mouse_hook(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    if enabled {
+        hook::install(app);
+    } else {
+        hook::uninstall();
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![save_state, load_state])
+        .invoke_handler(tauri::generate_handler![save_state, load_state, toggle_mouse_hook])
         .setup(|app| {
             let show = MenuItemBuilder::with_id("show", "显示").build(app)?;
             let quit = MenuItemBuilder::with_id("quit", "退出").build(app)?;
@@ -56,7 +68,7 @@ pub fn run() {
                                 let _ = w.set_focus();
                             }
                         }
-                        "quit" => app.exit(0),
+                        "quit" => { hook::uninstall(); app.exit(0) }
                         _ => {}
                     }
                 })
@@ -89,6 +101,7 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                hook::uninstall();
                 let _ = window.hide();
                 api.prevent_close();
             }

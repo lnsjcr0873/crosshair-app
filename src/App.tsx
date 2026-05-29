@@ -7,7 +7,7 @@ import TickList from './components/TickList'
 import TickPropertyPanel from './components/TickPropertyPanel'
 import { useCrosshairStore } from './store/crosshairStore'
 import { exportPng, savePreset } from './engine/actions'
-import { isTauri, setOverlayWindow, registerShortcut, registerRepeatShortcut, clearArrowRepeat, saveAppState, loadAppState } from './engine/tauri'
+import { isTauri, setOverlayWindow, registerShortcut, registerRepeatShortcut, clearArrowRepeat, saveAppState, loadAppState, toggleMouseHook } from './engine/tauri'
 
 function visibleTicks(st: any) {
   return st.config.ticks.filter((t: any) => {
@@ -79,6 +79,15 @@ function buildActionMap(): Map<string, (st: ReturnType<typeof useCrosshairStore.
   if (aUp) m.set(aUp, (st: any) => st.adjustLabels(1))
   const aDown = cfg('adjustDown')
   if (aDown) m.set(aDown, (st: any) => st.adjustLabels(-1))
+  // mouse hook toggle
+  const tHook = cfg('toggleHook')
+  if (tHook) m.set(tHook, async (st: any) => {
+    const next = !st.hookEnabled
+    st.setHookEnabled(next)
+    const { toggleMouseHook } = await import('./engine/tauri')
+    await toggleMouseHook(next)
+    st.showToast(next ? '🟢 鼠标钩子已启用 · Ctrl+滚轮 调整标签' : '⭕ 鼠标钩子已禁用')
+  })
   return m
 }
 
@@ -197,6 +206,7 @@ export default function App() {
     reg('fission')
     reg('adjustUp')
     reg('adjustDown')
+    reg('toggleHook')
 
     return () => {
       const unreg = async (key: string) => {
@@ -208,8 +218,17 @@ export default function App() {
       unreg('fission')
       unreg('adjustUp')
       unreg('adjustDown')
+      unreg('toggleHook')
     }
   }, [hotkeys])
+
+  // auto-disable mouse hook when exiting overlay mode
+  useEffect(() => {
+    if (!overlayMode && useCrosshairStore.getState().hookEnabled) {
+      useCrosshairStore.getState().setHookEnabled(false)
+      toggleMouseHook(false)
+    }
+  }, [overlayMode])
 
   // overlay mode global shortcuts (with repeat for arrows)
   // re-register whenever overlayMode or hotkeys change
@@ -239,6 +258,15 @@ export default function App() {
       ...repeatKeys.map((k) => registerFromMap(k, true)),
     ])
 
+    // Listen for mouse-wheel-adjust event from Rust hook (Ctrl+wheel in overlay)
+    let unlistenWheel: (() => void) | undefined
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<string>('mouse-wheel-adjust', (event) => {
+        const delta = event.payload === 'up' ? 1 : -1
+        useCrosshairStore.getState().adjustLabels(delta)
+      }).then((fn) => { unlistenWheel = fn })
+    })
+
     return () => {
       clearArrowRepeat()
       const allKeys = [...onceKeys, ...repeatKeys]
@@ -246,6 +274,7 @@ export default function App() {
         const s = h[k]
         if (s) import('@tauri-apps/plugin-global-shortcut').then(({ unregister }) => unregister(s))
       })
+      unlistenWheel?.()
     }
   }, [overlayMode, hotkeys])
 

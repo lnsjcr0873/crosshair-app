@@ -105,6 +105,7 @@ export const DEFAULT_HOTKEYS = {
   redo: 'Equal',
   adjustUp: 'Ctrl+Shift+.',
   adjustDown: 'Ctrl+Shift+,',
+  toggleHook: 'F4',
 }
 
 export function defaultFissionLevel(): FissionLevelConfig {

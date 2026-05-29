@@ -20,6 +20,8 @@ interface CrosshairStore {
   activeIndex: number
   hotkeys: Record<string, string>
   adjustLinked: boolean
+  hookEnabled: boolean
+  toastMsg: string | null
 
   setConfig: (config: CrosshairConfig) => void
   updateConfig: (partial: Partial<CrosshairConfig>) => void
@@ -55,6 +57,8 @@ interface CrosshairStore {
   resetHotkeys: () => void
   setAdjustLinked: (v: boolean) => void
   adjustLabels: (delta: number) => void
+  setHookEnabled: (v: boolean) => void
+  showToast: (msg: string) => void
 }
 
 function pushHistory(
@@ -130,6 +134,8 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     activeIndex: 0,
     hotkeys: { ...DEFAULT_HOTKEYS },
     adjustLinked: false,
+    hookEnabled: false,
+    toastMsg: null,
 
     setConfig: (config) => set((s) => ({
       ...pushHistory(s.history, s.historyIndex, config),
@@ -470,6 +476,13 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
       }),
 
     setAdjustLinked: (v) => set({ adjustLinked: v }),
+
+    setHookEnabled: (v) => set({ hookEnabled: v }),
+
+    showToast: (msg) => {
+      set({ toastMsg: msg })
+      setTimeout(() => { set({ toastMsg: null }) }, 2000)
+    },
 
     adjustLabels: (delta) =>
       set((s) => {

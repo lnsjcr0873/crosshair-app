@@ -14,6 +14,7 @@ const ACTION_LABELS: Record<string, string> = {
   fission: '刻度裂变',
   adjustUp: '标签+1',
   adjustDown: '标签-1',
+  toggleHook: '鼠标钩子开关',
 }
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {

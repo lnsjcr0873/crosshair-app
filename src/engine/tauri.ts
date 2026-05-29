@@ -113,3 +113,14 @@ export async function loadAppState(): Promise<string | null> {
     return null
   }
 }
+
+// Mouse hook for Ctrl+wheel in overlay mode
+export async function toggleMouseHook(enabled: boolean): Promise<void> {
+  if (!isTauri()) return
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('toggle_mouse_hook', { enabled })
+  } catch (e) {
+    console.error('toggleMouseHook failed:', e)
+  }
+}
