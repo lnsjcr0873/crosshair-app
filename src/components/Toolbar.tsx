@@ -2,8 +2,17 @@ import { useState } from 'react'
 import { useCrosshairStore } from '../store/crosshairStore'
 import { vssStylePreset, simplePreset } from '../engine/preset'
 import { exportPng, exportSvg, savePreset, loadPresetFromFile } from '../engine/actions'
+import { createDrawingElement } from '../engine/types'
+import type { EditMode } from '../engine/types'
 import SettingsPanel from './SettingsPanel'
 import FissionSettingsPanel from './FissionSettingsPanel'
+
+const SHAPES = [
+  { tool: 'line', label: '▬' },
+  { tool: 'rect', label: '■' },
+  { tool: 'ellipse', label: '●' },
+  { tool: 'text', label: 'T' },
+] as const
 
 export default function Toolbar() {
   const [showSettings, setShowSettings] = useState(false)
@@ -25,6 +34,13 @@ export default function Toolbar() {
   const adjustLabels = useCrosshairStore((s) => s.adjustLabels)
   const adjustLinked = useCrosshairStore((s) => s.adjustLinked)
   const setAdjustLinked = useCrosshairStore((s) => s.setAdjustLinked)
+  const editMode = useCrosshairStore((s) => s.editMode)
+  const setEditMode = useCrosshairStore((s) => s.setEditMode)
+  const activeDrawingTool = useCrosshairStore((s) => s.activeDrawingTool)
+  const setActiveDrawingTool = useCrosshairStore((s) => s.setActiveDrawingTool)
+  const addDrawingElement = useCrosshairStore((s) => s.addDrawingElement)
+  const selectedDrawingElementId = useCrosshairStore((s) => s.selectedDrawingElementId)
+  const removeDrawingElement = useCrosshairStore((s) => s.removeDrawingElement)
 
   const handleExportPng = () => exportPng(config)
   const handleExportSvg = () => exportSvg(config)
@@ -39,6 +55,32 @@ export default function Toolbar() {
   return (<>
     <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800 border-b border-zinc-700 flex-wrap">
       <span className="text-white font-semibold text-sm mr-2">准星刻度绘制</span>
+
+      <div className="flex gap-1 mr-2">
+        {(['tick', 'draw', 'select'] as EditMode[]).map((m) => (
+          <button key={m} onClick={() => setEditMode(m)}
+            className={`text-xs px-2 py-1 rounded border ${editMode === m ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}>
+            {m === 'tick' ? '🎯刻度' : m === 'draw' ? '✏️绘图' : '👆选择'}
+          </button>
+        ))}
+      </div>
+
+      {editMode === 'draw' && (
+        <div className="flex gap-1 mr-2">
+          {SHAPES.map(({ tool, label }) => (
+            <button key={tool} onClick={() => { setActiveDrawingTool(tool); useCrosshairStore.getState().showToast(label + ' 工具') }}
+              className={`text-xs px-2 py-1 rounded border ${activeDrawingTool === tool ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {editMode === 'select' && selectedDrawingElementId && (
+        <button onClick={() => removeDrawingElement(selectedDrawingElementId)} className="btn-danger text-xs">
+          删除图形
+        </button>
+      )}
 
       <div className="flex gap-1">
         <button onClick={undo} disabled={historyIndex <= 0} className="btn-icon" title="撤销 (Ctrl+Z)">

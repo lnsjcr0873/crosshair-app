@@ -53,6 +53,26 @@ export interface ReferenceImage {
   offsetY: number
 }
 
+export type DrawingTool = 'line' | 'rect' | 'ellipse' | 'text'
+
+export interface DrawingElement {
+  id: string
+  type: DrawingTool
+  x: number
+  y: number
+  width: number
+  height: number
+  rotation: number
+  color: string
+  strokeWidth: number
+  fill: string | null
+  visible: boolean
+  text?: string
+  fontSize?: number
+}
+
+export type EditMode = 'tick' | 'draw' | 'select'
+
 export interface CrosshairConfig {
   name: string
   centerGap: number
@@ -74,6 +94,7 @@ export interface CrosshairConfig {
   showRightTicks: boolean
   referenceImage?: ReferenceImage
   ticks: TickMark[]
+  drawingElements?: DrawingElement[]
   fissionConfig?: FissionConfig
 }
 
@@ -155,6 +176,7 @@ export function createDefaultConfig(): CrosshairConfig {
     showLeftTicks: true,
     showRightTicks: true,
     ticks: [],
+    drawingElements: [],
     fissionConfig: defaultFissionConfig(),
   }
 }
@@ -179,5 +201,22 @@ export function createTick(axis: 'horizontal' | 'vertical', distance: number, di
     offsetX: 0,
     offsetY: 0,
     visible: true,
+  }
+}
+
+export function createDrawingElement(type: DrawingTool, x: number, y: number): DrawingElement {
+  return {
+    id: generateId(),
+    type,
+    x, y,
+    width: type === 'line' ? 50 : 40,
+    height: type === 'line' ? 0 : 30,
+    rotation: 0,
+    color: '#00ff00',
+    strokeWidth: 2,
+    fill: null,
+    visible: true,
+    text: type === 'text' ? '文字' : undefined,
+    fontSize: 14,
   }
 }

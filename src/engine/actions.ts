@@ -1,5 +1,5 @@
 import { renderCrosshair } from './renderer'
-import type { CrosshairConfig } from './types'
+import type { CrosshairConfig, DrawingElement } from './types'
 import { isTauri, saveFileDialog, openFileDialog, writeTextFile, writeBinaryFile, readTextFile } from './tauri'
 
 export async function exportPng(config: CrosshairConfig) {
@@ -78,6 +78,29 @@ export function generateSvg(config: CrosshairConfig): string {
         ly = y1
       }
       lines.push(`<text x="${lx + tick.labelOffsetX}" y="${ly + tick.labelOffsetY}" fill="${esc(tick.color)}" font-size="${tick.fontSize}" font-family="monospace" text-anchor="middle" dominant-baseline="central">${esc(tick.label)}</text>`)
+    }
+  }
+  for (const el of (config.drawingElements || [])) {
+    if (!el.visible) continue
+    const ex = cx + el.x, ey = cy + el.y
+    const hw = el.width / 2, hh = el.height / 2
+    const rot = el.rotation ? ` transform="rotate(${el.rotation * 180 / Math.PI} ${ex} ${ey})"` : ''
+    if (el.fill) {
+      lines.push(`<rect x="${ex - hw}" y="${ey - hh}" width="${el.width}" height="${el.height}" fill="${esc(el.fill)}"${rot}/>`)
+    }
+    switch (el.type) {
+      case 'line':
+        lines.push(`<line x1="${ex - hw}" y1="${ey}" x2="${ex + hw}" y2="${ey}" stroke="${esc(el.color)}" stroke-width="${el.strokeWidth}"${rot}/>`)
+        break
+      case 'rect':
+        lines.push(`<rect x="${ex - hw}" y="${ey - hh}" width="${el.width}" height="${el.height}" fill="${esc(el.fill || 'none')}" stroke="${esc(el.color)}" stroke-width="${el.strokeWidth}"${rot}/>`)
+        break
+      case 'ellipse':
+        lines.push(`<ellipse cx="${ex}" cy="${ey}" rx="${hw}" ry="${hh}" fill="${esc(el.fill || 'none')}" stroke="${esc(el.color)}" stroke-width="${el.strokeWidth}"${rot}/>`)
+        break
+      case 'text':
+        lines.push(`<text x="${ex}" y="${ey}" fill="${esc(el.color)}" font-size="${el.fontSize || 14}" font-family="monospace" text-anchor="middle" dominant-baseline="central"${rot}>${esc(el.text || '')}</text>`)
+        break
     }
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${lines.join('')}</svg>`

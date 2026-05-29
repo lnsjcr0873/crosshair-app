@@ -1,4 +1,4 @@
-import type { CrosshairConfig, TickMark } from './types'
+import type { CrosshairConfig, TickMark, DrawingElement } from './types'
 
 const SELECTED_COLOR = '#ff4444'
 const imageCache = new Map<string, HTMLImageElement>()
@@ -19,6 +19,7 @@ export function renderCrosshair(
   height: number,
   scale: number = 1,
   selectedTickId?: string | null,
+  selectedElementId?: string | null,
 ) {
   const cx = width / 2
   const cy = height / 2
@@ -97,6 +98,55 @@ export function renderCrosshair(
       if (tick.distance > 0 && !config.showRightTicks) continue
     }
     drawTick(ctx, tick, tick.id === selectedTickId)
+  }
+
+  // draw drawing elements (on top of ticks)
+  for (const el of (config.drawingElements || [])) {
+    if (!el.visible) continue
+    const isSelected = el.id === selectedElementId
+    drawElement(ctx, el, isSelected)
+  }
+
+  ctx.restore()
+}
+
+function drawElement(ctx: CanvasRenderingContext2D, el: DrawingElement, selected: boolean = false) {
+  ctx.save()
+  ctx.translate(el.x, el.y)
+  ctx.rotate(el.rotation)
+  const color = selected ? '#4488ff' : el.color
+  ctx.strokeStyle = color
+  ctx.fillStyle = el.fill || (selected ? 'rgba(68,136,255,0.15)' : 'transparent')
+  ctx.lineWidth = selected ? el.strokeWidth + 1 : el.strokeWidth
+
+  switch (el.type) {
+    case 'line': {
+      ctx.beginPath()
+      ctx.moveTo(-el.width / 2, 0)
+      ctx.lineTo(el.width / 2, 0)
+      ctx.stroke()
+      break
+    }
+    case 'rect': {
+      ctx.fillRect(-el.width / 2, -el.height / 2, el.width, el.height)
+      ctx.strokeRect(-el.width / 2, -el.height / 2, el.width, el.height)
+      break
+    }
+    case 'ellipse': {
+      ctx.beginPath()
+      ctx.ellipse(0, 0, el.width / 2, el.height / 2, 0, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      break
+    }
+    case 'text': {
+      ctx.font = `${el.fontSize || 14}px monospace`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = el.color
+      ctx.fillText(el.text || '', 0, 0)
+      break
+    }
   }
 
   ctx.restore()
@@ -205,4 +255,48 @@ function pointToSegmentDist(
   let t = ((px - ax) * dx + (py - ay) * dy) / lenSq
   t = Math.max(0, Math.min(1, t))
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+}
+
+export function pickElementAtPoint(
+  elements: DrawingElement[],
+  px: number,
+  py: number,
+  scale: number,
+  width: number,
+  height: number,
+  threshold: number = 12,
+): DrawingElement | null {
+  const cx = width / 2
+  const cy = height / 2
+  const mx = (px - cx) / scale
+  const my = (py - cy) / scale
+
+  for (let i = elements.length - 1; i >= 0; i--) {
+    const el = elements[i]
+    if (!el.visible) continue
+    const halfW = el.width / 2
+    const halfH = el.height / 2
+
+    let hit = false
+    switch (el.type) {
+      case 'line':
+        hit = pointToSegmentDist(mx, my, el.x - halfW, el.y, el.x + halfW, el.y) < threshold / scale
+        break
+      case 'rect':
+        hit = mx >= el.x - halfW && mx <= el.x + halfW && my >= el.y - halfH && my <= el.y + halfH
+        break
+      case 'ellipse': {
+        const rx = halfW, ry = halfH
+        if (rx <= 0 || ry <= 0) { hit = false; break }
+        const dx = (mx - el.x) / rx, dy = (my - el.y) / ry
+        hit = (dx * dx + dy * dy) <= 1
+        break
+      }
+      case 'text':
+        hit = Math.hypot(mx - el.x, my - el.y) < threshold / scale
+        break
+    }
+    if (hit) return el
+  }
+  return null
 }

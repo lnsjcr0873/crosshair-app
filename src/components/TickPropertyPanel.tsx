@@ -84,20 +84,101 @@ function SliderInput({ value, min, max, step, onChange }: {
   )
 }
 
+function DrawingPropertyPanel() {
+  const el = useCrosshairStore((s) => s.config.drawingElements?.find((e) => e.id === s.selectedDrawingElementId))
+  const updateDrawingElement = useCrosshairStore((s) => s.updateDrawingElement)
+  const removeDrawingElement = useCrosshairStore((s) => s.removeDrawingElement)
+
+  if (!el) {
+    return <div className="p-4 text-zinc-500 text-sm">选择画布上的图形进行编辑</div>
+  }
+
+  return (
+    <div className="p-4 space-y-3 text-sm">
+      <h3 className="text-white font-semibold mb-2">
+        图形属性
+        <span className="text-zinc-400 ml-2 text-xs">
+          （{el.type === 'line' ? '线' : el.type === 'rect' ? '矩形' : el.type === 'ellipse' ? '椭圆' : '文字'}）
+        </span>
+      </h3>
+
+      <PropRow label="X">
+        <SliderInput value={el.x} min={-500} max={500} step={1} onChange={(v) => updateDrawingElement(el.id, { x: v })} />
+      </PropRow>
+      <PropRow label="Y">
+        <SliderInput value={el.y} min={-500} max={500} step={1} onChange={(v) => updateDrawingElement(el.id, { y: v })} />
+      </PropRow>
+      <PropRow label="宽">
+        <SliderInput value={el.width} min={1} max={300} step={1} onChange={(v) => updateDrawingElement(el.id, { width: v })} />
+      </PropRow>
+      <PropRow label="高">
+        <SliderInput value={el.height} min={1} max={300} step={1} onChange={(v) => updateDrawingElement(el.id, { height: v })} />
+      </PropRow>
+      <PropRow label="旋转">
+        <SliderInput value={Math.round(el.rotation * 180 / Math.PI)} min={-180} max={180} step={1}
+          onChange={(v) => updateDrawingElement(el.id, { rotation: v * Math.PI / 180 })} />
+      </PropRow>
+      <PropRow label="颜色">
+        <input type="color" value={el.color}
+          onChange={(e) => updateDrawingElement(el.id, { color: e.target.value })}
+          className="w-10 h-8 bg-transparent border-0 cursor-pointer" />
+      </PropRow>
+      <PropRow label="线宽">
+        <SliderInput value={el.strokeWidth} min={0.5} max={20} step={0.5} onChange={(v) => updateDrawingElement(el.id, { strokeWidth: v })} />
+      </PropRow>
+      <PropRow label="填充">
+        <input type="color" value={el.fill || '#00ff00'}
+          onChange={(e) => updateDrawingElement(el.id, { fill: e.target.value })}
+          className="w-10 h-8 bg-transparent border-0 cursor-pointer" />
+        <button onClick={() => updateDrawingElement(el.id, { fill: null })}
+          className="text-xs text-zinc-400 hover:text-white border border-zinc-600 rounded px-1">无</button>
+      </PropRow>
+
+      {el.type === 'text' && (
+        <>
+          <PropRow label="文字">
+            <input type="text" value={el.text || ''}
+              onChange={(e) => updateDrawingElement(el.id, { text: e.target.value })}
+              className="input-field flex-1" />
+          </PropRow>
+          <PropRow label="字号">
+            <SliderInput value={el.fontSize || 14} min={6} max={80} step={1}
+              onChange={(v) => updateDrawingElement(el.id, { fontSize: v })} />
+          </PropRow>
+        </>
+      )}
+
+      <div className="flex gap-2 pt-2">
+        <button onClick={() => removeDrawingElement(el.id)} className="btn-danger flex-1">删除</button>
+        <button onClick={() => updateDrawingElement(el.id, { visible: !el.visible })}
+          className={`btn-secondary flex-1 ${el.visible ? '' : 'opacity-50'}`}>
+          {el.visible ? '隐藏' : '显示'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function TickPropertyPanel() {
   const selectedTickId = useCrosshairStore((s) => s.selectedTickId)
+  const selectedDrawingElementId = useCrosshairStore((s) => s.selectedDrawingElementId)
   const config = useCrosshairStore((s) => s.config)
   const updateTick = useCrosshairStore((s) => s.updateTick)
   const removeTick = useCrosshairStore((s) => s.removeTick)
   const duplicateTick = useCrosshairStore((s) => s.duplicateTick)
   const mirrorTick = useCrosshairStore((s) => s.mirrorTick)
 
+  // Show drawing element panel when a drawing element is selected
+  if (selectedDrawingElementId) {
+    return <DrawingPropertyPanel />
+  }
+
   const tick = config.ticks.find((t) => t.id === selectedTickId)
 
   if (!tick) {
     return (
       <div className="p-4 text-zinc-500 text-sm">
-        点击画布上的刻度进行选中
+        点击画布上的刻度或图形进行选中
       </div>
     )
   }
@@ -129,18 +210,6 @@ export default function TickPropertyPanel() {
         </div>
       </PropRow>
 
-      <PropRow label="距离">
-        <SliderInput value={tick.distance} min={-200} max={200} step={1} onChange={(v) => updateTick(tick.id, { distance: v })} />
-      </PropRow>
-
-      <PropRow label="线长">
-        <SliderInput value={tick.lineLength} min={0.1} max={80} step={0.1} onChange={(v) => updateTick(tick.id, { lineLength: v })} />
-      </PropRow>
-
-      <PropRow label="线宽">
-        <SliderInput value={tick.lineWidth} min={0.1} max={10} step={0.1} onChange={(v) => updateTick(tick.id, { lineWidth: v })} />
-      </PropRow>
-
       <PropRow label="锁定">
         <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
           <input
@@ -151,6 +220,18 @@ export default function TickPropertyPanel() {
           />
           调整时保持不动
         </label>
+      </PropRow>
+
+      <PropRow label="距离">
+        <SliderInput value={tick.distance} min={-200} max={200} step={1} onChange={(v) => updateTick(tick.id, { distance: v })} />
+      </PropRow>
+
+      <PropRow label="线长">
+        <SliderInput value={tick.lineLength} min={0.1} max={80} step={0.1} onChange={(v) => updateTick(tick.id, { lineLength: v })} />
+      </PropRow>
+
+      <PropRow label="线宽">
+        <SliderInput value={tick.lineWidth} min={0.1} max={10} step={0.1} onChange={(v) => updateTick(tick.id, { lineWidth: v })} />
       </PropRow>
 
       <PropRow label="数值">

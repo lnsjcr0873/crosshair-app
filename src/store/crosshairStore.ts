@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { defaultPreset } from '../engine/preset'
-import type { CrosshairConfig, TickMark, ConfigEntry, FissionConfig, FissionLevelConfig } from '../engine/types'
+import type { CrosshairConfig, TickMark, ConfigEntry, FissionConfig, FissionLevelConfig, DrawingElement, EditMode } from '../engine/types'
 import { createTick, generateId, createDefaultConfig, DEFAULT_HOTKEYS, defaultFissionConfig, defaultFissionLevel } from '../engine/types'
 
 interface HistoryEntry {
@@ -59,6 +59,16 @@ interface CrosshairStore {
   adjustLabels: (delta: number) => void
   setHookEnabled: (v: boolean) => void
   showToast: (msg: string) => void
+  editMode: EditMode
+  activeDrawingTool: string
+  selectedDrawingElementId: string | null
+  setEditMode: (mode: EditMode) => void
+  setActiveDrawingTool: (tool: string) => void
+  selectDrawingElement: (id: string | null) => void
+  addDrawingElement: (el: DrawingElement) => void
+  updateDrawingElement: (id: string, partial: Partial<DrawingElement>) => void
+  removeDrawingElement: (id: string) => void
+  moveDrawingElement: (id: string, x: number, y: number) => void
 }
 
 function pushHistory(
@@ -136,6 +146,9 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     adjustLinked: false,
     hookEnabled: false,
     toastMsg: null,
+    editMode: 'tick',
+    activeDrawingTool: 'rect',
+    selectedDrawingElementId: null,
 
     setConfig: (config) => set((s) => ({
       ...pushHistory(s.history, s.historyIndex, config),
@@ -151,7 +164,7 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
         }
       }),
 
-    selectTick: (id) => set({ selectedTickId: id, selectedTickIds: id ? new Set([id]) : new Set() }),
+    selectTick: (id) => set({ selectedTickId: id, selectedTickIds: id ? new Set([id]) : new Set(), selectedDrawingElementId: null }),
 
     toggleTickSelection: (id) =>
       set((s) => {
@@ -483,6 +496,50 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
       set({ toastMsg: msg })
       setTimeout(() => { set({ toastMsg: null }) }, 2000)
     },
+
+    setEditMode: (mode) => set({ editMode: mode, selectedTickId: null, selectedDrawingElementId: null, selectedTickIds: new Set() }),
+
+    setActiveDrawingTool: (tool) => set({ activeDrawingTool: tool }),
+
+    selectDrawingElement: (id) => set({ selectedDrawingElementId: id, selectedTickId: null, selectedTickIds: new Set() }),
+
+    addDrawingElement: (el) =>
+      set((s) => {
+        const elements = [...(s.config.drawingElements || []), el]
+        const newConfig = { ...s.config, drawingElements: elements }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config), selectedDrawingElementId: el.id, editMode: 'select' }
+      }),
+
+    updateDrawingElement: (id, partial) =>
+      set((s) => {
+        const el = (s.config.drawingElements || []).find((e) => e.id === id)
+        if (!el) return s
+        const elements = (s.config.drawingElements || []).map((e) => e.id === id ? { ...e, ...partial } : e)
+        const newConfig = { ...s.config, drawingElements: elements }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config) }
+      }),
+
+    removeDrawingElement: (id) =>
+      set((s) => {
+        const elements = (s.config.drawingElements || []).filter((e) => e.id !== id)
+        const newConfig = { ...s.config, drawingElements: elements }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return {
+          ...result,
+          configList: syncListEntry(s, result.config),
+          selectedDrawingElementId: s.selectedDrawingElementId === id ? null : s.selectedDrawingElementId,
+        }
+      }),
+
+    moveDrawingElement: (id, x, y) =>
+      set((s) => {
+        const elements = (s.config.drawingElements || []).map((e) => e.id === id ? { ...e, x, y } : e)
+        const newConfig = { ...s.config, drawingElements: elements }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config) }
+      }),
 
     adjustLabels: (delta) =>
       set((s) => {
