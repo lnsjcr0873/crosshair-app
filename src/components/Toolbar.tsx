@@ -68,6 +68,8 @@ export default function Toolbar() {
           onChange={(e) => setScale(Number(e.target.value))}
           className="w-20"
         />
+        <span className="text-zinc-500 w-8 text-right">{scale.toFixed(1)}</span>
+        <button onClick={() => setScale(1)} className="text-zinc-500 hover:text-white text-xs px-1" title="缩放到 1.0">默认</button>
       </div>
 
       <div className="w-px h-5 bg-zinc-600 mx-1" />

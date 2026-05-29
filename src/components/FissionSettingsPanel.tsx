@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useCrosshairStore } from '../store/crosshairStore'
 import { defaultFissionConfig, defaultFissionLevel } from '../engine/types'
 import type { FissionConfig, FissionLevelConfig } from '../engine/types'
@@ -10,14 +10,61 @@ const PROP_LABELS: Record<string, string> = {
 type FissionProp = keyof NonNullable<FissionLevelConfig['inherit']>
 const PROP_KEYS: FissionProp[] = ['lineLength', 'lineWidth', 'color', 'fontSize', 'offsetX', 'offsetY', 'labelOffsetX', 'labelOffsetY']
 
+const PROP_RANGE: Record<string, { min: number; max: number; step: number }> = {
+  lineLength: { min: 0.1, max: 80, step: 0.1 },
+  lineWidth: { min: 0.1, max: 10, step: 0.1 },
+  fontSize: { min: 6, max: 40, step: 1 },
+  offsetX: { min: -200, max: 200, step: 1 },
+  offsetY: { min: -200, max: 200, step: 1 },
+  labelOffsetX: { min: -200, max: 200, step: 1 },
+  labelOffsetY: { min: -200, max: 200, step: 1 },
+}
+
 function SliderInput({ value, min, max, step, onChange }: {
   value: number; min: number; max: number; step: number; onChange: (v: number) => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const [buf, setBuf] = useState('')
+  const valueRef = useRef(value)
+  valueRef.current = value
+  const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleWheel = useCallback((e: WheelEvent) => {
+    e.preventDefault()
+    const cur = valueRef.current
+    const dir = e.deltaY > 0 ? -1 : 1
+    const raw = cur + dir * step
+    const snapped = Math.round(raw / step) * step
+    const clamped = Math.min(max, Math.max(min, snapped))
+    if (clamped !== cur) onChange(clamped)
+  }, [min, max, step, onChange])
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel, { passive: false } as any)
+  }, [handleWheel])
+
   const fmt = (v: number) => step < 1 ? v.toFixed(1) : String(v)
+  const startEdit = () => { setBuf(fmt(value)); setEditing(true) }
+  const commit = () => {
+    setEditing(false)
+    const v = parseFloat(buf)
+    if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)))
+  }
+  const handleKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false) }
+  useEffect(() => { if (editing && inputRef.current) inputRef.current.select() }, [editing])
+
   return (
-    <div className="flex items-center gap-1 flex-1">
+    <div ref={ref} className="flex items-center gap-1 flex-1">
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1" />
-      <input type="number" value={fmt(value)} onChange={(e) => { const v = parseFloat(e.target.value); if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v))) }} className="input-field w-14 text-center" step={step} />
+      {editing ? (
+        <input ref={inputRef} type="text" inputMode="numeric" value={buf} onChange={(e) => setBuf(e.target.value)} onBlur={commit} onKeyDown={handleKey} className="input-field w-14 text-center" />
+      ) : (
+        <span onClick={startEdit} className="cursor-text hover:bg-zinc-700 rounded px-1.5 py-0.5 min-w-[2.5rem] text-right text-zinc-200 text-xs select-none" title="点击编辑">{fmt(value)}</span>
+      )}
     </div>
   )
 }
@@ -128,6 +175,7 @@ export default function FissionSettingsPanel({ onClose }: { onClose: () => void 
               inheritMode={level.inherit?.[prop]}
               value={prop === 'color' ? (level[prop] as string) : (level[prop] as number)}
               isColor={prop === 'color'}
+              range={PROP_RANGE[prop]}
               onInheritChange={(mode) => setInherit(prop, mode)}
               onValueChange={(v) => setLevel({ [prop]: v })}
             />
@@ -143,8 +191,9 @@ export default function FissionSettingsPanel({ onClose }: { onClose: () => void 
   )
 }
 
-function LevelPropRow({ label, inheritMode, value, isColor, onInheritChange, onValueChange }: {
+function LevelPropRow({ label, inheritMode, value, isColor, range, onInheritChange, onValueChange }: {
   label: string; inheritMode?: 'previous' | 'next'; value: number | string | undefined; isColor: boolean
+  range: { min: number; max: number; step: number }
   onInheritChange: (mode: 'previous' | 'next' | undefined) => void; onValueChange: (v: any) => void
 }) {
   return (
@@ -168,7 +217,7 @@ function LevelPropRow({ label, inheritMode, value, isColor, onInheritChange, onV
         ) : isColor ? (
           <input type="color" value={value as string} onChange={(e) => onValueChange(e.target.value)} className="w-10 h-7 bg-transparent border-0 cursor-pointer" />
         ) : (
-          <SliderInput value={value as number} min={-200} max={200} step={1} onChange={onValueChange} />
+          <SliderInput value={value as number} min={range.min} max={range.max} step={range.step} onChange={onValueChange} />
         )}
       </div>
     </div>

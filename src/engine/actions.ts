@@ -14,10 +14,12 @@ export async function exportPng(config: CrosshairConfig) {
   if (!blob) return
   const name = `${config.name || 'crosshair'}.png`
   if (isTauri()) {
-    const path = await saveFileDialog(name, [{ name: 'PNG Image', extensions: ['png'] }])
+    const path = await saveFileDialog(name, [{ name: 'PNG', extensions: ['png'] }])
     if (!path) return
+    let finalPath = path.replace(/\.lnk$/i, '')
+    if (!finalPath.endsWith('.png')) finalPath += '.png'
     const buf = await blob.arrayBuffer()
-    await writeBinaryFile(path, new Uint8Array(buf))
+    await writeBinaryFile(finalPath, new Uint8Array(buf))
   } else {
     const link = document.createElement('a')
     link.download = name; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href)

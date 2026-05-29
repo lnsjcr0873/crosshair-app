@@ -1,12 +1,15 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useState } from 'react'
 import { useCrosshairStore } from '../store/crosshairStore'
 
 function SliderInput({ value, min, max, step, onChange }: {
   value: number; min: number; max: number; step: number; onChange: (v: number) => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const [buf, setBuf] = useState('')
   const valueRef = useRef(value)
   valueRef.current = value
   const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault()
@@ -27,6 +30,25 @@ function SliderInput({ value, min, max, step, onChange }: {
 
   const fmt = (v: number) => step < 1 ? v.toFixed(1) : String(v)
 
+  const startEdit = () => { setBuf(fmt(value)); setEditing(true) }
+
+  const commit = () => {
+    setEditing(false)
+    const v = parseFloat(buf)
+    if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)))
+  }
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') commit()
+    if (e.key === 'Escape') setEditing(false)
+  }
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.select()
+    }
+  }, [editing])
+
   return (
     <div ref={ref} className="flex items-center gap-1 flex-1">
       <input
@@ -38,16 +60,26 @@ function SliderInput({ value, min, max, step, onChange }: {
         onChange={(e) => onChange(Number(e.target.value))}
         className="flex-1"
       />
-      <input
-        type="number"
-        value={fmt(value)}
-        onChange={(e) => {
-          const v = parseFloat(e.target.value)
-          if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)))
-        }}
-        className="input-field w-14 text-center"
-        step={step}
-      />
+      {editing ? (
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          value={buf}
+          onChange={(e) => setBuf(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKey}
+          className="input-field w-14 text-center"
+        />
+      ) : (
+        <span
+          onClick={startEdit}
+          className="cursor-text hover:bg-zinc-700 rounded px-1.5 py-0.5 min-w-[2.5rem] text-right text-zinc-200 text-xs select-none"
+          title="点击编辑"
+        >
+          {fmt(value)}
+        </span>
+      )}
     </div>
   )
 }

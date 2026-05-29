@@ -417,7 +417,7 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
             const aNum = parseFloat(a.label); const bNum = parseFloat(b.label)
             let newLabel: string
             if (fc.labelMode === 'midpoint') {
-              newLabel = !isNaN(aNum) && !isNaN(bNum) ? String((aNum + bNum) / 2) : String(Math.round(newDist))
+              newLabel = !isNaN(aNum) && !isNaN(bNum) ? String(Math.round((aNum + bNum) / 2)) : String(Math.round(newDist))
             } else if (fc.labelMode === 'left-value') {
               newLabel = !isNaN(aNum) ? String(aNum) : String(Math.round(newDist))
             } else if (fc.labelMode === 'right-value') {
