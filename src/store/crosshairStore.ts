@@ -19,6 +19,7 @@ interface CrosshairStore {
   configList: ConfigEntry[]
   activeIndex: number
   hotkeys: Record<string, string>
+  adjustLinked: boolean
 
   setConfig: (config: CrosshairConfig) => void
   updateConfig: (partial: Partial<CrosshairConfig>) => void
@@ -52,6 +53,8 @@ interface CrosshairStore {
   switchConfig: (index: number) => void
   updateHotkeys: (key: string, value: string) => void
   resetHotkeys: () => void
+  setAdjustLinked: (v: boolean) => void
+  adjustLabels: (delta: number) => void
 }
 
 function pushHistory(
@@ -126,6 +129,7 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     configList: [{ name: '默认准星', config: initial }],
     activeIndex: 0,
     hotkeys: { ...DEFAULT_HOTKEYS },
+    adjustLinked: false,
 
     setConfig: (config) => set((s) => ({
       ...pushHistory(s.history, s.historyIndex, config),
@@ -460,6 +464,58 @@ export const useCrosshairStore = create<CrosshairStore>((set, get) => {
     clearGeneratedTicks: () =>
       set((s) => {
         const ticks = s.config.ticks.filter((t) => !t.generated)
+        const newConfig = { ...s.config, ticks }
+        const result = pushHistory(s.history, s.historyIndex, newConfig)
+        return { ...result, configList: syncListEntry(s, result.config) }
+      }),
+
+    setAdjustLinked: (v) => set({ adjustLinked: v }),
+
+    adjustLabels: (delta) =>
+      set((s) => {
+        const linked = s.adjustLinked
+        const groups = new Map<string, { label: number; dist: number }[]>()
+
+        for (const t of s.config.ticks) {
+          if (!t.visible || t.locked) continue
+          const num = parseFloat(t.label)
+          if (isNaN(num)) continue
+          const ds = t.distance >= 0 ? 'pos' : 'neg'
+          const key = linked ? 'all' : `${t.axis}:${ds}`
+          if (!groups.has(key)) groups.set(key, [])
+          groups.get(key)!.push({ label: num, dist: t.distance })
+        }
+
+        const groupRatios = new Map<string, number>()
+        for (const [key, items] of groups) {
+          items.sort((a, b) => a.dist - b.dist)
+          if (items.length < 2) continue
+          const r: number[] = []
+          for (let i = 0; i < items.length - 1; i++) {
+            const dl = items[i + 1].label - items[i].label
+            const dd = items[i + 1].dist - items[i].dist
+            if (Math.abs(dl) > 0.01) r.push(dd / dl)
+          }
+          if (r.length === 0) continue
+          r.sort((a, b) => a - b)
+          groupRatios.set(key, r[Math.floor(r.length / 2)])
+        }
+
+        if (groupRatios.size === 0) return s
+
+        const ticks = s.config.ticks.map((t) => {
+          if (!t.visible || t.locked) return t
+          const num = parseFloat(t.label)
+          if (isNaN(num)) return t
+          const ds = t.distance >= 0 ? 'pos' : 'neg'
+          const key = linked ? 'all' : `${t.axis}:${ds}`
+          const ratio = groupRatios.get(key)
+          if (ratio === undefined) return t
+          const newLabel = String(Math.round((num + delta) * 10) / 10)
+          const newDist = Math.round((t.distance + ratio * delta) * 100) / 100
+          return { ...t, label: newLabel, distance: newDist }
+        })
+
         const newConfig = { ...s.config, ticks }
         const result = pushHistory(s.history, s.historyIndex, newConfig)
         return { ...result, configList: syncListEntry(s, result.config) }

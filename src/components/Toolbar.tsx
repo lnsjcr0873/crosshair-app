@@ -22,6 +22,9 @@ export default function Toolbar() {
   const fissionSplit = useCrosshairStore((s) => s.fissionSplit)
   const clearGeneratedTicks = useCrosshairStore((s) => s.clearGeneratedTicks)
   const hasGenerated = config.ticks.some((t) => t.generated)
+  const adjustLabels = useCrosshairStore((s) => s.adjustLabels)
+  const adjustLinked = useCrosshairStore((s) => s.adjustLinked)
+  const setAdjustLinked = useCrosshairStore((s) => s.setAdjustLinked)
 
   const handleExportPng = () => exportPng(config)
   const handleExportSvg = () => exportSvg(config)
@@ -169,6 +172,22 @@ export default function Toolbar() {
         title="同步编辑水平刻度的对称侧"
       >
         对称 {symmetricMode ? 'ON' : 'OFF'}
+      </button>
+
+      <div className="w-px h-5 bg-zinc-600 mx-1" />
+
+      <button onClick={() => adjustLabels(-1)} className="btn-secondary text-xs" title="标签 -1 (Ctrl+Shift+,)">
+        -1
+      </button>
+      <button onClick={() => adjustLabels(1)} className="btn-secondary text-xs" title="标签 +1 (Ctrl+Shift+.)">
+        +1
+      </button>
+      <button
+        onClick={() => setAdjustLinked(!adjustLinked)}
+        className={`text-xs px-2 py-1 rounded border ${adjustLinked ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
+        title="全局联动调整"
+      >
+        {adjustLinked ? '🔗' : '⊘'}
       </button>
 
       <div className="w-px h-5 bg-zinc-600 mx-1" />

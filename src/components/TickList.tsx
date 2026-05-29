@@ -59,6 +59,33 @@ export default function TickList() {
     setRenaming(false)
   }
 
+  const renderTick = (t: typeof config.ticks[0]) => (
+    <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
+      <span className="text-zinc-300 w-14">{t.distance > 0 ? `R${t.distance}` : `L${Math.abs(t.distance)}`}</span>
+      <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
+      <span className="text-amber-500 text-xs mr-1">{t.locked ? '🔒' : ''}</span>
+      <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
+    </div>
+  )
+
+  const renderTopTick = (t: typeof config.ticks[0]) => (
+    <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
+      <span className="text-zinc-300 w-14">{`U${Math.abs(t.distance)}`}</span>
+      <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
+      <span className="text-amber-500 text-xs mr-1">{t.locked ? '🔒' : ''}</span>
+      <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
+    </div>
+  )
+
+  const renderBottomTick = (t: typeof config.ticks[0]) => (
+    <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
+      <span className="text-zinc-300 w-14">{`D${t.distance}`}</span>
+      <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
+      <span className="text-amber-500 text-xs mr-1">{t.locked ? '🔒' : ''}</span>
+      <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
+    </div>
+  )
+
   return (<>
     <div className="p-4 space-y-4 text-sm">
       {/* 配置管理 */}
@@ -132,13 +159,7 @@ export default function TickList() {
           </div>
         </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
-          {hUpTicks.map((t) => (
-            <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
-              <span className="text-zinc-300 w-14">{t.distance > 0 ? `R${t.distance}` : `L${Math.abs(t.distance)}`}</span>
-              <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
-              <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
-            </div>
-          ))}
+          {hUpTicks.map(renderTick)}
           {hUpTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
       </div>
@@ -152,13 +173,7 @@ export default function TickList() {
           </div>
         </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
-          {hDownTicks.map((t) => (
-            <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
-              <span className="text-zinc-300 w-14">{t.distance > 0 ? `R${t.distance}` : `L${Math.abs(t.distance)}`}</span>
-              <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
-              <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
-            </div>
-          ))}
+          {hDownTicks.map(renderTick)}
           {hDownTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
       </div>
@@ -173,13 +188,7 @@ export default function TickList() {
             </div>
           </div>
           <div className="space-y-1 max-h-32 overflow-y-auto">
-            {topTicks.map((t) => (
-              <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
-                <span className="text-zinc-300 w-14">{`U${Math.abs(t.distance)}`}</span>
-                <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
-                <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
-              </div>
-            ))}
+            {topTicks.map(renderTopTick)}
             {topTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
           </div>
         </div>
@@ -196,13 +205,7 @@ export default function TickList() {
           </div>
         </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
-          {bottomRightTicks.map((t) => (
-            <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
-              <span className="text-zinc-300 w-14">{`D${t.distance}`}</span>
-              <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
-              <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
-            </div>
-          ))}
+          {bottomRightTicks.map(renderBottomTick)}
           {bottomRightTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
       </div>
@@ -218,13 +221,7 @@ export default function TickList() {
           </div>
         </div>
         <div className="space-y-1 max-h-32 overflow-y-auto">
-          {bottomLeftTicks.map((t) => (
-            <div key={t.id} onClick={(e) => handleTickClick(e, t.id)} className={tickClass(t.id)}>
-              <span className="text-zinc-300 w-14">{`D${t.distance}`}</span>
-              <span className="text-zinc-400 flex-1">{t.label || '—'}</span>
-              <button onClick={(e) => { e.stopPropagation(); removeTick(t.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
-            </div>
-          ))}
+          {bottomLeftTicks.map(renderBottomTick)}
           {bottomLeftTicks.length === 0 && <div className="text-zinc-600 text-xs py-1">暂无刻度</div>}
         </div>
       </div>

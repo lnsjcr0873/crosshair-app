@@ -14,6 +14,7 @@ export interface TickMark {
   offsetY: number
   mirrorId?: string
   visible: boolean
+  locked?: boolean
   generated?: boolean
   generation?: number
 }
@@ -82,8 +83,8 @@ export interface ConfigEntry {
 }
 
 export const DEFAULT_HOTKEYS = {
-  toggleOverlay: 'Ctrl+Shift+2',
-  toggleVisibility: 'Ctrl+Shift+H',
+  toggleOverlay: 'F2',
+  toggleVisibility: 'F3',
   prevTick: 'PageUp',
   nextTick: 'PageDown',
   incDistance: 'ArrowDown',
@@ -99,9 +100,11 @@ export const DEFAULT_HOTKEYS = {
   switchConfig7: 'Ctrl+7',
   switchConfig8: 'Ctrl+8',
   switchConfig9: 'Ctrl+9',
-  fission: 'Ctrl+Shift+F',
-  undo: 'Ctrl+Z',
-  redo: 'Ctrl+Shift+Z',
+  fission: 'Insert',
+  undo: 'Minus',
+  redo: 'Equal',
+  adjustUp: 'Ctrl+Shift+.',
+  adjustDown: 'Ctrl+Shift+,',
 }
 
 export function defaultFissionLevel(): FissionLevelConfig {

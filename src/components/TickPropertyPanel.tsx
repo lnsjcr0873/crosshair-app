@@ -141,6 +141,18 @@ export default function TickPropertyPanel() {
         <SliderInput value={tick.lineWidth} min={0.1} max={10} step={0.1} onChange={(v) => updateTick(tick.id, { lineWidth: v })} />
       </PropRow>
 
+      <PropRow label="锁定">
+        <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
+          <input
+            type="checkbox"
+            checked={!!tick.locked}
+            onChange={(e) => updateTick(tick.id, { locked: e.target.checked })}
+            className="accent-amber-500"
+          />
+          调整时保持不动
+        </label>
+      </PropRow>
+
       <PropRow label="数值">
         <input
           type="text"

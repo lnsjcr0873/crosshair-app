@@ -74,6 +74,11 @@ function buildActionMap(): Map<string, (st: ReturnType<typeof useCrosshairStore.
   if (uKey) m.set(uKey, (st: any) => st.undo())
   const rKey = cfg('redo')
   if (rKey) m.set(rKey, (st: any) => st.redo())
+  // adjust
+  const aUp = cfg('adjustUp')
+  if (aUp) m.set(aUp, (st: any) => st.adjustLabels(1))
+  const aDown = cfg('adjustDown')
+  if (aDown) m.set(aDown, (st: any) => st.adjustLabels(-1))
   return m
 }
 
@@ -112,6 +117,7 @@ export default function App() {
           activeIndex: saved.activeIndex || 0,
           config: cfg,
           hotkeys: { ...useCrosshairStore.getState().hotkeys, ...(saved.hotkeys || {}) },
+          adjustLinked: saved.adjustLinked ?? false,
           history: [{ config: structuredClone(cfg) }],
           historyIndex: 0,
           selectedTickId: null,
@@ -132,6 +138,7 @@ export default function App() {
         configList: st.configList,
         activeIndex: st.activeIndex,
         hotkeys: st.hotkeys,
+        adjustLinked: st.adjustLinked,
       }))
     }, 1000)
     return () => clearTimeout(timer)
@@ -188,8 +195,8 @@ export default function App() {
     reg('toggleOverlay')
     reg('toggleVisibility')
     reg('fission')
-    reg('undo')
-    reg('redo')
+    reg('adjustUp')
+    reg('adjustDown')
 
     return () => {
       const unreg = async (key: string) => {
@@ -199,8 +206,8 @@ export default function App() {
       unreg('toggleOverlay')
       unreg('toggleVisibility')
       unreg('fission')
-      unreg('undo')
-      unreg('redo')
+      unreg('adjustUp')
+      unreg('adjustDown')
     }
   }, [hotkeys])
 
@@ -225,7 +232,7 @@ export default function App() {
     }
 
     const repeatKeys = ['incDistance', 'decDistance', 'incLineLength', 'decLineLength']
-    const onceKeys = ['prevTick', 'nextTick']
+    const onceKeys = ['prevTick', 'nextTick', 'undo', 'redo']
 
     Promise.all([
       ...onceKeys.map((k) => registerFromMap(k, false)),
@@ -244,20 +251,29 @@ export default function App() {
 
   // keyboard handler (editor mode + browser fallback for overlay)
   useEffect(() => {
+    const getCombo = (e: KeyboardEvent) => {
+      const parts: string[] = []
+      if (e.ctrlKey || e.metaKey) parts.push('Ctrl')
+      if (e.shiftKey) parts.push('Shift')
+      if (e.altKey) parts.push('Alt')
+      let c = e.code
+      if (c.startsWith('Digit') || c.startsWith('Key')) c = c.slice(5)
+      else if (c === 'BracketLeft') c = '['
+      else if (c === 'BracketRight') c = ']'
+      parts.push(c)
+      return parts.join('+')
+    }
     const handler = (e: KeyboardEvent) => {
-      const ctrl = e.ctrlKey || e.metaKey
       const st = useCrosshairStore.getState()
+      const combo = getCombo(e)
+      const h = st.hotkeys
+      const allHotkeyCombos = Object.values(h).filter(Boolean)
 
-      // built-in editor shortcuts (skip in Tauri, handled by global shortcuts)
-      if (isTauri() && ctrl && (e.code === 'KeyZ' || e.key === 'z')) return
-      if (ctrl && (e.code === 'KeyZ' || e.key === 'z')) {
-        if (e.shiftKey) { e.preventDefault(); st.redo() }
-        else { e.preventDefault(); st.undo() }
-        return
-      }
-      if (ctrl && (e.code === 'KeyY' || e.key === 'y')) { e.preventDefault(); st.redo(); return }
+      // In Tauri, global shortcuts handle everything; skip keyboard handler
+      if (isTauri() && allHotkeyCombos.includes(combo)) return
+
+      const ctrl = e.ctrlKey || e.metaKey
       if (ctrl && (e.code === 'KeyS' || e.key === 's')) { e.preventDefault(); savePreset(st.config); return }
-      if (ctrl && (e.code === 'KeyE' || e.key === 'e')) { e.preventDefault(); exportPng(st.config); return }
 
       // Ctrl+1~9 switch config (works in both modes)
       if (ctrl && e.code >= 'Digit1' && e.code <= 'Digit9') {
@@ -268,28 +284,12 @@ export default function App() {
       }
 
       // custom hotkey actions
-      const parts: string[] = []
-      if (ctrl) parts.push('Ctrl')
-      if (e.shiftKey) parts.push('Shift')
-      if (e.altKey) parts.push('Alt')
-      let c = e.code
-      if (c.startsWith('Digit') || c.startsWith('Key')) c = c.slice(5)
-      else if (c === 'BracketLeft') c = '['
-      else if (c === 'BracketRight') c = ']'
-      parts.push(c)
-      const combo = parts.join('+')
       const action = buildActionMap().get(combo)
       if (action) {
-        const h = useCrosshairStore.getState().hotkeys
-        // In Tauri, global shortcuts handle these (work when unfocused)
-        if (isTauri() && (combo === h.toggleOverlay || combo === h.toggleVisibility || combo === h.fission || combo === h.undo || combo === h.redo)) return
-        const isGlobal = combo === h.toggleOverlay || combo === h.toggleVisibility || combo.startsWith('Ctrl+')
-        if (isGlobal || st.overlayMode) {
-          e.preventDefault()
-          action(st)
-          return
-        }
-        if (!st.overlayMode) return
+        // Non-Tauri: exec in any mode. Tauri: never reaches here (guarded above).
+        e.preventDefault()
+        action(st)
+        return
       }
 
       // arrow acceleration (only when not handled by hotkeys above in overlay fallback)
