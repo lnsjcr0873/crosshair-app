@@ -1,7 +1,8 @@
 import { useRef, useEffect, useCallback } from 'react'
 import { useCrosshairStore } from '../store/crosshairStore'
 import { renderCrosshair, pickTickAtPoint, pickElementAtPoint } from '../engine/renderer'
-import { createDrawingElement } from '../engine/types'
+import { createDrawingElement, generateId } from '../engine/types'
+import type { DrawingElement } from '../engine/types'
 
 export default function CanvasPreview() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -20,10 +21,15 @@ export default function CanvasPreview() {
   const addDrawingElement = useCrosshairStore((s) => s.addDrawingElement)
   const selectDrawingElement = useCrosshairStore((s) => s.selectDrawingElement)
   const moveDrawingElement = useCrosshairStore((s) => s.moveDrawingElement)
+  const removeDrawingElement = useCrosshairStore((s) => s.removeDrawingElement)
   const setEditMode = useCrosshairStore((s) => s.setEditMode)
+  const updateDrawingElement = useCrosshairStore((s) => s.updateDrawingElement)
+  const drawingElements = config.drawingElements || []
 
   const draggingRef = useRef<{ id: string; startX: number; startY: number; origX: number; origY: number } | null>(null)
   const refDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+  const isDrawingRef = useRef<{ mx: number; my: number } | null>(null)
+  const clipboardRef = useRef<DrawingElement | null>(null)
 
   // draw
   useEffect(() => {
@@ -65,30 +71,78 @@ export default function CanvasPreview() {
     return { px, py, mx, my, width: rect.width, height: rect.height }
   }
 
+  // keyboard handler
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const st = useCrosshairStore.getState()
+      const elId = st.selectedDrawingElementId
+      const tickId = st.selectedTickId
+      const ctrl = e.ctrlKey || e.metaKey
+
+      // Delete / Backspace: remove selected element or tick
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !ctrl) {
+        if (elId) { e.preventDefault(); st.removeDrawingElement(elId); return }
+        if (tickId) { e.preventDefault(); st.removeTick(tickId); return }
+      }
+
+      // Ctrl+C: copy selected element
+      if (ctrl && (e.key === 'c' || e.key === 'C')) {
+        if (elId) {
+          e.preventDefault()
+          const el = (st.config.drawingElements || []).find((e) => e.id === elId)
+          if (el) clipboardRef.current = { ...el }
+        }
+      }
+
+      // Ctrl+V: paste
+      if (ctrl && (e.key === 'v' || e.key === 'V')) {
+        if (clipboardRef.current) {
+          e.preventDefault()
+          const newEl = { ...clipboardRef.current, id: generateId(), x: clipboardRef.current.x + 10, y: clipboardRef.current.y + 10 }
+          st.addDrawingElement(newEl)
+        }
+      }
+
+      // Arrow keys: nudge selected element by 1px
+      if (!ctrl && (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        if (elId) {
+          e.preventDefault()
+          const el = (st.config.drawingElements || []).find((e) => e.id === elId)
+          if (!el) return
+          const dx = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0
+          const dy = e.key === 'ArrowUp' ? -1 : e.key === 'ArrowDown' ? 1 : 0
+          st.moveDrawingElement(elId, el.x + dx, el.y + dy)
+          return
+        }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
+
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current
-      if (!canvas) return
       const { px, py, mx, my, width, height } = getCanvasCoords(e)
-      const st = useCrosshairStore.getState()
 
-      if (editMode === 'draw') {
-        const el = createDrawingElement(activeDrawingTool as any, Math.round(mx), Math.round(my))
+      if (editMode === 'draw' && activeDrawingTool !== 'text') return // handled by mousedown/mouseup
+
+      if (editMode === 'draw' && activeDrawingTool === 'text') {
+        const el = createDrawingElement('text', Math.round(mx), Math.round(my))
+        el.text = ''
         addDrawingElement(el)
         setEditMode('select')
         return
       }
 
       if (editMode === 'select') {
-        const el = pickElementAtPoint(config.drawingElements || [], px, py, scale, width, height)
+        const el = pickElementAtPoint(drawingElements, px, py, scale, width, height)
         if (el) { selectDrawingElement(el.id); return }
       }
 
-      // tick mode or select mode fallback: try selecting a tick
       const found = pickTickAtPoint(config.ticks, px, py, scale, width, height)
       selectTick(found ? found.id : null)
     },
-    [config.ticks, config.drawingElements, scale, editMode, activeDrawingTool, addDrawingElement, selectDrawingElement, selectTick, setEditMode],
+    [config.ticks, drawingElements, scale, editMode, activeDrawingTool, addDrawingElement, selectDrawingElement, selectTick, setEditMode],
   )
 
   const handleMouseDown = useCallback(
@@ -101,40 +155,40 @@ export default function CanvasPreview() {
         }
         return
       }
-      const canvas = canvasRef.current
-      if (!canvas) return
       const { px, py, mx, my, width, height } = getCanvasCoords(e)
-      const st = useCrosshairStore.getState()
 
-      // select/draw modes: check drawing elements first
+      // Draw mode: start drawing shape
+      if (editMode === 'draw' && activeDrawingTool !== 'text') {
+        isDrawingRef.current = { mx, my }
+        return
+      }
+
+      // Select mode: check elements first, then ticks
       if (editMode !== 'tick') {
-        const el = pickElementAtPoint(config.drawingElements || [], px, py, scale, width, height)
+        const el = pickElementAtPoint(drawingElements, px, py, scale, width, height)
         if (el) {
           selectDrawingElement(el.id)
           draggingRef.current = { id: el.id, startX: mx, startY: my, origX: el.x, origY: el.y }
           return
         }
-        // In select mode, if no element found, try tick
         if (editMode === 'select') {
           const found = pickTickAtPoint(config.ticks, px, py, scale, width, height)
           if (found) {
             selectTick(found.id)
-            draggingRef.current = {
-              id: found.id, startX: mx, startY: my, origX: found.distance, origY: 0,
-            }
+            draggingRef.current = { id: found.id, startX: mx, startY: my, origX: found.distance, origY: 0 }
           }
         }
         return
       }
 
-      // tick mode: existing behavior
+      // Tick mode
       const found = pickTickAtPoint(config.ticks, px, py, scale, width, height)
       if (found) {
         selectTick(found.id)
         draggingRef.current = { id: found.id, startX: mx, startY: my, origX: found.distance, origY: 0 }
       }
     },
-    [config.ticks, config.drawingElements, scale, selectTick, selectDrawingElement, config.referenceImage, editMode],
+    [config.ticks, drawingElements, scale, selectTick, selectDrawingElement, config.referenceImage, editMode, activeDrawingTool],
   )
 
   const handleMouseMove = useCallback(
@@ -157,7 +211,6 @@ export default function CanvasPreview() {
         const dx = mx - d.startX
         const dy = my - d.startY
         moveDrawingElement(d.id, Math.round(d.origX + dx), Math.round(d.origY + dy))
-        draggingRef.current = { ...d, startX: mx, startY: my }
         return
       }
 
@@ -177,10 +230,48 @@ export default function CanvasPreview() {
     [config.ticks, config.drawingElements, scale, moveTick, moveDrawingElement],
   )
 
-  const handleMouseUp = useCallback(() => {
-    draggingRef.current = null
-    refDragRef.current = null
-  }, [])
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      // Finish click-drag draw
+      if (isDrawingRef.current) {
+        const start = isDrawingRef.current
+        const { mx, my } = getCanvasCoords(e)
+        isDrawingRef.current = null
+
+        const dx = mx - start.mx
+        const dy = my - start.my
+
+        if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return // too small, ignore
+
+        if (activeDrawingTool === 'line') {
+          const cx = (start.mx + mx) / 2
+          const cy = (start.my + my) / 2
+          const len = Math.hypot(dx, dy)
+          const el = createDrawingElement('line', Math.round(cx), Math.round(cy))
+          el.width = Math.round(len)
+          el.rotation = Math.atan2(dy, dx)
+          addDrawingElement(el)
+          setEditMode('select')
+          return
+        }
+
+        const cx = (start.mx + mx) / 2
+        const cy = (start.my + my) / 2
+        const w = Math.abs(dx)
+        const h = Math.abs(dy)
+        const el = createDrawingElement(activeDrawingTool as any, Math.round(cx), Math.round(cy))
+        el.width = Math.max(1, Math.round(w))
+        el.height = Math.max(1, Math.round(h))
+        addDrawingElement(el)
+        setEditMode('select')
+        return
+      }
+
+      draggingRef.current = null
+      refDragRef.current = null
+    },
+    [activeDrawingTool, addDrawingElement, setEditMode],
+  )
 
   const scrollState = useRef({ step: 1, acc: 0, timer: 0 })
   const SCROLL_THRESHOLD = 10
@@ -192,7 +283,6 @@ export default function CanvasPreview() {
     const handler = (e: WheelEvent) => {
       e.preventDefault()
       const st = useCrosshairStore.getState()
-      // In draw/select mode: scroll zooms
       if (st.editMode !== 'tick') {
         const cur = st.scale
         const delta = e.deltaY > 0 ? -0.1 : 0.1
@@ -225,7 +315,6 @@ export default function CanvasPreview() {
     }
   }, [])
 
-  // paste image from clipboard
   useEffect(() => {
     const handler = async (e: ClipboardEvent) => {
       const file = e.clipboardData?.files[0]

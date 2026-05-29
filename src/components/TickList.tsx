@@ -15,6 +15,10 @@ export default function TickList() {
   const addTick = useCrosshairStore((s) => s.addTick)
   const removeTick = useCrosshairStore((s) => s.removeTick)
   const removeTicks = useCrosshairStore((s) => s.removeTicks)
+  const selectedDrawingElementId = useCrosshairStore((s) => s.selectedDrawingElementId)
+  const selectDrawingElement = useCrosshairStore((s) => s.selectDrawingElement)
+  const removeDrawingElement = useCrosshairStore((s) => s.removeDrawingElement)
+  const editMode = useCrosshairStore((s) => s.editMode)
 
   const configList = useCrosshairStore((s) => s.configList)
   const activeIndex = useCrosshairStore((s) => s.activeIndex)
@@ -233,6 +237,31 @@ export default function TickList() {
           <button onClick={clearSelection} className="btn-secondary text-xs">取消选择</button>
         </div>
       )}
+
+      {/* 图形元素 */}
+      <div className="border-t border-zinc-700 pt-3">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-white font-semibold text-xs">图形 ({config.drawingElements?.length || 0})</h3>
+          <span className="text-zinc-500 text-xs">{editMode !== 'tick' ? '👆选择模式' : '🎯切换为绘图'}</span>
+        </div>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {(config.drawingElements || []).map((el) => (
+            <div key={el.id} onClick={() => selectDrawingElement(el.id)}
+              className={`tick-item ${selectedDrawingElementId === el.id ? 'tick-item-active' : ''}`}>
+              <span className="text-zinc-300 w-14 text-xs">
+                {el.type === 'line' ? '▬线' : el.type === 'rect' ? '■矩形' : el.type === 'ellipse' ? '●圆' : 'T文字'}
+              </span>
+              <span className="text-zinc-400 flex-1 text-xs">
+                {el.type === 'text' ? (el.text || '—') : `(${el.x},${el.y})`}
+              </span>
+              <button onClick={(e) => { e.stopPropagation(); removeDrawingElement(el.id) }} className="text-red-500 hover:text-red-400 text-xs">×</button>
+            </div>
+          ))}
+          {(!config.drawingElements || config.drawingElements.length === 0) && (
+            <div className="text-zinc-600 text-xs py-1">暂无图形，切换到绘图模式添加</div>
+          )}
+        </div>
+      </div>
     </div>
     {batchAxis && <BatchAddDialog axis={batchAxis} onClose={() => setBatchAxis(null)} />}
   </>)
