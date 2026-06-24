@@ -20,6 +20,10 @@ function createPreset(name: string, ticks: TickMark[]): CrosshairConfig {
     showRightLine: true,
     showLeftTicks: true,
     showRightTicks: true,
+    showCenterDot: false,
+    centerDotSize: 4,
+    centerDotColor: '#00ff00',
+    centerDotAlpha: 1,
     ticks,
   }
 }

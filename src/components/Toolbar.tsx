@@ -209,6 +209,13 @@ export default function Toolbar() {
       </div>
 
       <button
+        onClick={() => updateConfig({ showCenterDot: !config.showCenterDot })}
+        className={`text-xs px-2 py-1 rounded border ${config.showCenterDot ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
+      >
+        ⨁ 中心点 {config.showCenterDot ? 'ON' : 'OFF'}
+      </button>
+
+      <button
         onClick={() => setSymmetricMode(!symmetricMode)}
         className={`text-xs px-2 py-1 rounded border ${symmetricMode ? 'bg-green-700 border-green-500 text-white' : 'bg-zinc-700 border-zinc-500 text-zinc-400'}`}
         title="同步编辑水平刻度的对称侧"

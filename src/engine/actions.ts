@@ -103,6 +103,9 @@ export function generateSvg(config: CrosshairConfig): string {
         break
     }
   }
+  if (config.showCenterDot) {
+    lines.push(`<circle cx="${cx}" cy="${cy}" r="${config.centerDotSize}" fill="${esc(config.centerDotColor)}" opacity="${config.centerDotAlpha}"/>`)
+  }
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${lines.join('')}</svg>`
 }
 

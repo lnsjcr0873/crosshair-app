@@ -92,6 +92,10 @@ export interface CrosshairConfig {
   showRightLine: boolean
   showLeftTicks: boolean
   showRightTicks: boolean
+  showCenterDot: boolean
+  centerDotSize: number
+  centerDotColor: string
+  centerDotAlpha: number
   referenceImage?: ReferenceImage
   ticks: TickMark[]
   drawingElements?: DrawingElement[]
@@ -175,6 +179,10 @@ export function createDefaultConfig(): CrosshairConfig {
     showRightLine: true,
     showLeftTicks: true,
     showRightTicks: true,
+    showCenterDot: false,
+    centerDotSize: 4,
+    centerDotColor: '#00ff00',
+    centerDotAlpha: 1,
     ticks: [],
     drawingElements: [],
     fissionConfig: defaultFissionConfig(),

@@ -159,6 +159,42 @@ function DrawingPropertyPanel() {
   )
 }
 
+function CenterDotPanel() {
+  const config = useCrosshairStore((s) => s.config)
+  const updateConfig = useCrosshairStore((s) => s.updateConfig)
+
+  return (
+    <div className="p-4 space-y-3 text-sm">
+      <h3 className="text-white font-semibold mb-2">中心点设置</h3>
+
+      <PropRow label="显示">
+        <label className="flex items-center gap-2 cursor-pointer text-zinc-300">
+          <input type="checkbox" checked={config.showCenterDot}
+            onChange={(e) => updateConfig({ showCenterDot: e.target.checked })}
+            className="accent-green-500" />
+          显示中心点
+        </label>
+      </PropRow>
+
+      <PropRow label="大小">
+        <SliderInput value={config.centerDotSize} min={1} max={30} step={1}
+          onChange={(v) => updateConfig({ centerDotSize: v })} />
+      </PropRow>
+
+      <PropRow label="颜色">
+        <input type="color" value={config.centerDotColor}
+          onChange={(e) => updateConfig({ centerDotColor: e.target.value })}
+          className="w-10 h-8 bg-transparent border-0 cursor-pointer" />
+      </PropRow>
+
+      <PropRow label="透明度">
+        <SliderInput value={config.centerDotAlpha} min={0} max={1} step={0.05}
+          onChange={(v) => updateConfig({ centerDotAlpha: v })} />
+      </PropRow>
+    </div>
+  )
+}
+
 export default function TickPropertyPanel() {
   const selectedTickId = useCrosshairStore((s) => s.selectedTickId)
   const selectedDrawingElementId = useCrosshairStore((s) => s.selectedDrawingElementId)
@@ -176,11 +212,7 @@ export default function TickPropertyPanel() {
   const tick = config.ticks.find((t) => t.id === selectedTickId)
 
   if (!tick) {
-    return (
-      <div className="p-4 text-zinc-500 text-sm">
-        点击画布上的刻度或图形进行选中
-      </div>
-    )
+    return <CenterDotPanel />
   }
 
   return (

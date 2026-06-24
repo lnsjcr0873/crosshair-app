@@ -107,6 +107,17 @@ export function renderCrosshair(
     drawElement(ctx, el, isSelected)
   }
 
+  // center dot (topmost)
+  if (config.showCenterDot) {
+    ctx.save()
+    ctx.globalAlpha = config.centerDotAlpha
+    ctx.fillStyle = config.centerDotColor
+    ctx.beginPath()
+    ctx.arc(0, 0, config.centerDotSize, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+
   ctx.restore()
 }
 
