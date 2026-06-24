@@ -19,7 +19,14 @@ jobs:
       - run: npm ci
       - run: npm run build
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo check 2>&1 | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append; exit 0
+      - shell: powershell
+        run: |
+          $out = cargo check 2>&1 | Out-String
+          $lines = $out -split "`n" | Where-Object { $_ -ne "" }
+          foreach ($line in $lines) {
+            Write-Host "::error title=Cargo Check::$line"
+          }
+          exit 0
         env:
           RUST_BACKTRACE: 1
         working-directory: src-tauri
