@@ -21,11 +21,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - shell: powershell
         run: |
-          $out = cargo check 2>&1 | Out-String
-          $lines = $out -split "`n" | Where-Object { $_ -ne "" }
-          foreach ($line in $lines) {
-            Write-Host "::error title=Cargo Check::$line"
-          }
+          $lines = cargo check 2>&1
+          $lines | ForEach-Object { echo "::error file=hook.rs,title=Rust Compile Error::$_" }
           exit 0
         env:
           RUST_BACKTRACE: 1
