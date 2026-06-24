@@ -19,14 +19,10 @@ jobs:
       - run: npm ci
       - run: npm run build
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo check >cargo-output.txt 2>&1; $res=$LASTEXITCODE; echo "exit=$res" >>cargo-output.txt; exit 0
+      - run: cargo check 2>&1 | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append; exit 0
         env:
           RUST_BACKTRACE: 1
         working-directory: src-tauri
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cargo-error
-          path: src-tauri/cargo-output.txt
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
